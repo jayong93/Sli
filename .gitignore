@@ -29,6 +29,7 @@
 *.dylib
 
 # Executables
+Sli
 *.exe
 *.out
 *.app
