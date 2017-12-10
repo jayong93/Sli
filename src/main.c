@@ -22,7 +22,6 @@ void SigUserHandler(int signo) {
 
 int ConnectToServer(const char* id) {
 #ifdef USE_FIFO
-	return 0;
 #else
 	int fd;
 	if ((fd = open(SERVER_FIFO_NAME, O_WRONLY)) < 0) {
@@ -64,10 +63,10 @@ int ConnectToServer(const char* id) {
 		close(channel_in);
 		return -1;
 	}
+#endif
 
 	pthread_mutex_init(&rDataLock, NULL);
 	return 0;
-#endif
 }
 
 int main(){
