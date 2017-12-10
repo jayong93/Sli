@@ -3,6 +3,8 @@
 #define IPC_KEY_SND 60179
 #define IPC_KEY_RCV 60178
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <pthread.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -10,13 +12,18 @@
 #include <pthread.h>
 #include <sys/msg.h>
 #include <string.h>
+#include <ncursesw/curses.h>
 #include "ClientCommu.h"
 
 extern pthread_mutex_t rDataLock;
 extern pthread_cond_t dataCopyCond;
+extern WINDOW* mainWin;
 int isConnected = 0;
 int channelRcv = -1;
 int channelSnd = -1;
+char* renderData = NULL;
+int nRenderData = 0;
+int maxRenderData = 0;
 
 void SigUserHandler(int signo) {
 	isConnected = 1;
@@ -28,7 +35,7 @@ int ConnectToServer(const char* id) {
 	sigfillset(&(act.sa_mask));
 	sigaction(SIGUSR1, &act, NULL);
 
-#ifdef USE_FIFO
+#ifndef USE_FIFO
 	int enterQueue;
 	if ((enterQueue = msgget(IPC_KEY_CON, 0666|IPC_CREAT)) < 0) {
 		perror("Failed to get the enter queue");
@@ -84,12 +91,12 @@ int ConnectToServer(const char* id) {
 	int nameLen = strlen(fifoName);
 	fifoName[nameLen+1] = 0;
 	fifoName[nameLen] = 'i';
-	if ((channelRcv = open(fifoName, O_RDWR)) < 0) {
+	if ((channelRcv = open(fifoName, O_RDONLY)) < 0) {
 		perror("failed to open input channel");
 		return -1;
 	}
 	fifoName[nameLen] = 'o';
-	if ((channelSnd = open(fifoName, O_RDWR)) < 0) {
+	if ((channelSnd = open(fifoName, O_WRONLY)) < 0) {
 		perror("failed to open output channel");
 		close(channelRcv);
 		return -1;
@@ -98,10 +105,102 @@ int ConnectToServer(const char* id) {
 	return 0;
 }
 
-void* RecvMsg() {
-#ifdef USE_FIFO
+void RecvFromPipe(int* rlen, int nRead) {
+	if (nRead == 0) return;
+
+	int ret;
+	if (nRead > (maxRenderData - *rlen)) {
+		maxRenderData *= 2;
+		renderData = (char*)realloc(renderData, maxRenderData);
+	}
+	// 파이프가 닫혔을 때 종료
+	if (ret = read(channelRcv, renderData + *rlen, nRead) == 0)
+		exit(5);
+	
+	*rlen += ret;
+}
+
+void RecvFromMsgQueue(int* rlen, int nRead) {
+	int pid = getpid();
+	if (nRead == 0) return;
+
+	int ret;
+	if (nRead > (maxRenderData - *rlen)) {
+		maxRenderData *= 2;
+		renderData = (char*)realloc(renderData, maxRenderData);
+	}
+
+	MsgEntry msg;
+	for (int i=0; i <= ((nRead-1)/BUF_SIZE); ++i) {
+		if (ret = msgrcv(channelRcv, &msg, BUF_SIZE, pid, 0) < 0)
+			exit(5);
+		memcpy(renderData + *rlen, &msg.msg, ret);
+		*rlen += ret;
+	}
+}
+
+void RecvFromServer(int* rlen, int nRead) {
+#ifndef USE_FIFO
+	RecvFromMsgQueue(rlen, nRead);
 #else
+	RecvFromPipe(rlen, nRead);
 #endif
+}
+
+void* RecvMsg() {
+	maxRenderData = 50;
+	renderData = (char*)malloc(maxRenderData);
+
+	// -1의 message가 왔을 때 종료 처리
+	while(1) {
+		int rlen = 0;
+		pthread_mutex_lock(&rDataLock);
+		// score
+		RecvFromServer(&rlen, sizeof(int));
+#ifndef USE_FIFO
+		if (*(int*)renderData < 0) exit(5);
+#endif
+		// color
+		RecvFromServer(&rlen, sizeof(int));
+
+		int* nPoints = (int*)(renderData+rlen);
+		RecvFromServer(&rlen, sizeof(int));
+		for (int i=0; i<(*nPoints*2); ++i) {
+			// points
+			RecvFromServer(&rlen, sizeof(int));
+		}
+
+		int* nPlayers = (int*)(renderData+rlen);
+		RecvFromServer(&rlen, sizeof(int));
+		for (int i=0; i<*nPlayers; ++i) {
+			// color
+			RecvFromServer(&rlen, sizeof(int));
+
+			int* idLen = (int*)(renderData+rlen);
+			RecvFromServer(&rlen, sizeof(int));
+			// id
+			RecvFromServer(&rlen, *idLen);
+
+			int* nPoints = (int*)(renderData+rlen);
+			RecvFromServer(&rlen, sizeof(int));
+			for (int i=0; i<(*nPoints*2); ++i) {
+				// points
+				RecvFromServer(&rlen, sizeof(int));
+			}
+		}
+
+		for (int i=0; i<3; ++i) {
+			int* idLen = (int*)(renderData+rlen);
+			RecvFromServer(&rlen, sizeof(int));
+			RecvFromServer(&rlen, *idLen);
+		}
+
+		nRenderData = rlen;
+
+		pthread_cond_signal(&dataCopyCond);
+		pthread_mutex_unlock(&rDataLock);
+	}
+	free(renderData);
 }
 
 void* SendMsg() {

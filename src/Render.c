@@ -1,15 +1,22 @@
 #define NCURSES_WIDECHAR 1
 
+#include <stdlib.h>
 #include <malloc.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <string.h>
 #include <locale.h>
 #include "Render.h"
+#include "Util.h"
+
+#define BODY 'O'
+#define STAR '*'
 
 extern pthread_mutex_t rDataLock;
 extern pthread_cond_t dataCopyCond;
 WINDOW* mainWin;
+extern char* renderData;
+extern int nRenderData;
 
 void TransformToScreen(Point base, Point* target) {
 	target->x = (target->x - base.x) + ((WINDOW_WIDTH-2)/2) + 1;
@@ -26,7 +33,7 @@ void DrawLine(WINDOW* win, Point start, Point end) {
 	for (; cx-xoffset != end.x || cy-yoffset != end.y; cx += xoffset, cy += yoffset) {
 		if (cx < 1 || cx > WINDOW_WIDTH-2) break;
 		if (cy < 1 || cy > WINDOW_HEIGHT-2) break;
-		mvwaddch(win, cy, cx, 'O');
+		mvwaddch(win, cy, cx, BODY);
 	}
 }
 
@@ -69,12 +76,22 @@ void* Render() {
 	if (isColor)
 	{
 		start_color();
-		init_pair(1, 12, COLOR_BLACK);
+		int ignore[] = {0, 16, 8};
+		// COLOR_PAIR 번호는 1~228
+		for (int i=0, j=0; i<227; ++i, ++j) {
+			for (int t=0; t < (sizeof(ignore)/sizeof(*ignore)); ++t) {
+				if (ignore[t] == j) {
+					++j;
+					t = -1;
+				}
+			}
+			init_pair(i+1, j, COLOR_BLACK);
+		}
 	}
 	else {
 		endwin();
 		printf("this terminal has no colors.\n");
-		return 0;
+		exit(6);
 	}
 	cbreak();
 	curs_set(0);
@@ -84,41 +101,82 @@ void* Render() {
 
 	box(mainWin, 0, 0);
 
-	char buf[19];
-	char* p_buf = buf;
-	*(int*)p_buf = 7;
-	p_buf += sizeof(int);
-	strncpy(p_buf, "abcdefg", 7);
-	p_buf += 7;
-	*((int*)p_buf) = 0;
-	p_buf += sizeof(int);
-	*((int*)p_buf) = 0;
-	p_buf += sizeof(int);
+	int localDataLen = 0;
+	int maxDataLen = 0;
+	char* localData = NULL;
+	while(1) {
+		// 렌더링 데이터 복사
+		pthread_mutex_lock(&rDataLock);
+		pthread_cond_wait(&dataCopyCond, &rDataLock);
+		localDataLen = nRenderData;
+		if (maxDataLen < localDataLen) {
+			if (localData) free(localData);
+			maxDataLen = (int)(localDataLen*1.5);
+			localData = (char*)malloc(maxDataLen);
+		}
+		memcpy(localData, renderData, localDataLen);
+		pthread_mutex_unlock(&rDataLock);
 
-	Point pos = {100, 20};
-	Point tail = {70, 20};
-	Point tail2 = {70, 5};
-	unsigned int score = 0;
+		char* pData = localData;
 
-	while(1){
-		Point p = pos, t = tail, t2 = tail2;
-		TransformToScreen(pos, &p);
-		TransformToScreen(pos, &t);
-		TransformToScreen(pos, &t2);
-		score++;
-		DrawRankingBar(mainWin, buf);
-		DrawStatusBar(mainWin, pos, score);
-		mvwprintw(mainWin, 20, 10, "%d", COLORS);
+		int myScore = *(int*)MovePointer(&pData, sizeof(int));
+		int myColor = *(int*)MovePointer(&pData, sizeof(int));
+		int myPointsNum = *(int*)MovePointer(&pData, sizeof(int));
+		Point p1, p2, myHead;
+		myHead = *(Point*)MovePointer(&pData, sizeof(Point));
+
+		DrawStatusBar(mainWin, myHead, myScore);
+
+		// Draw my Data
+		TransformToScreen(myHead, &p1);
 		wattron(mainWin, COLOR_PAIR(1));
-		mvwaddch(mainWin, p.y, p.x, 'O');
+		mvwaddch(mainWin, p1.y, p1.x, BODY);
 		wattroff(mainWin, COLOR_PAIR(1));
-		DrawLine(mainWin, p, t);
-		DrawLine(mainWin, t, t2);
-		wrefresh(mainWin);
-		usleep(32);
+
+		wattron(mainWin, COLOR_PAIR(myColor));
+		for (int i=1; i<myPointsNum; ++i) {
+			p2 = *(Point*)MovePointer(&pData, sizeof(Point));
+			TransformToScreen(myHead, &p2);
+			DrawLine(mainWin, p1, p2);
+
+			p1 = p2;
+		}
+		wattroff(mainWin, COLOR_PAIR(myColor));
+
+		// Draw other players
+		int nPlayer = *(int*)MovePointer(&pData, sizeof(int));
+		for (int i=0; i<nPlayer; ++i) {
+			int color = *(int*)MovePointer(&pData, sizeof(int));
+			int idLen = *(int*)MovePointer(&pData, sizeof(int));
+			char* id = (char*)MovePointer(&pData, idLen);
+
+			int nPoints = *(int*)MovePointer(&pData, sizeof(int));
+			p1 = *(Point*)MovePointer(&pData, sizeof(Point));
+			TransformToScreen(myHead, &p1);
+			wattron(mainWin, COLOR_PAIR(1));
+			mvwaddch(mainWin, p1.y, p1.x, BODY);
+			wattroff(mainWin, COLOR_PAIR(1));
+
+			wattron(mainWin, COLOR_PAIR(color));
+			for (int j=1; j<nPoints; ++j) {
+				p2 = *(Point*)MovePointer(&pData, sizeof(Point));
+				TransformToScreen(myHead, &p2);
+				DrawLine(mainWin, p1, p2);
+				p1 = p2;
+			}
+			wattroff(mainWin, COLOR_PAIR(color));
+		}
+
+		int nStar = *(int*)MovePointer(&pData, sizeof(int));
+		Point star;
+		for (int i=0; i<nStar; ++i) {
+			star = *(Point*)MovePointer(&pData, sizeof(Point));
+			mvwaddch(mainWin, star.y, star.x, STAR);
+		}
+
+		DrawRankingBar(mainWin, pData);
 	}
 
-	wgetch(mainWin);
-
+	if (localData) free(localData);
 	endwin();
 }
