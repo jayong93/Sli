@@ -98,6 +98,7 @@ void* Render() {
 
 	mainWin = newwin(WINDOW_HEIGHT, WINDOW_WIDTH, 0, 0);
 	noecho();
+	keypad(mainWin, TRUE);
 
 	box(mainWin, 0, 0);
 
@@ -171,6 +172,7 @@ void* Render() {
 		Point star;
 		for (int i=0; i<nStar; ++i) {
 			star = *(Point*)MovePointer(&pData, sizeof(Point));
+			TransformToScreen(myHead, &star);
 			mvwaddch(mainWin, star.y, star.x, STAR);
 		}
 
