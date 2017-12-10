@@ -3,26 +3,30 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <locale.h>
 #include <signal.h>
+#include <pthread.h>
 #include <ncursesw/curses.h>
 #include "Render.h"
 
+extern pthread_mutex_t rDataLock;
 int isConnected = 0;
 int channel_in = -1;
 int channel_out = -1;
 
 void SigUserHandler(int signo) {
-	isConnected = 1
+	isConnected = 1;
 }
 
 int ConnectToServer(const char* id) {
 #ifdef USE_FIFO
+	return 0;
 #else
 	int fd;
 	if ((fd = open(SERVER_FIFO_NAME, O_WRONLY)) < 0) {
-		perror("A Server does not exist")
+		perror("A Server does not exist");
 		return -1;
 	}
 
@@ -50,17 +54,18 @@ int ConnectToServer(const char* id) {
 	int nameLen = strlen(fifoName);
 	fifoName[nameLen+1] = 0;
 	fifoName[nameLen] = 'i';
-	if ((channel_in = open(fifoName, O_RDRW)) < 0) {
+	if ((channel_in = open(fifoName, O_RDWR)) < 0) {
 		perror("failed to open input channel");
 		return -1;
 	}
 	fifoName[nameLen] = 'o';
-	if ((channel_out = open(fifoName, O_RDRW)) < 0) {
+	if ((channel_out = open(fifoName, O_RDWR)) < 0) {
 		perror("failed to open output channel");
 		close(channel_in);
 		return -1;
 	}
 
+	pthread_mutex_init(&rDataLock, NULL);
 	return 0;
 #endif
 }
