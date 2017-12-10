@@ -1,6 +1,6 @@
 CC = gcc
 SRC_DIR = src
-SRCS = main.c
+SRCS = main.c Render.c
 ENTRY_POINT = main.c
 OBJS = $(SRCS:%.c=%.o)
 TARGET = Sli
@@ -18,7 +18,11 @@ TEST_SRCS = $(subst $(ENTRY_POINT),$(TEST_ENTRY_POINT),$(SRCS))
 TEST_SRCS += CuTest.c
 TEST_OBJS = $(TEST_SRCS:%.c=%.o)
 
-CFLAGS += -MMD -MP
+LIB_HEAD_DIR = $(SRC_DIR)/ncurses
+LIB_DIR = lib
+LIB_NAME = ncursesw
+
+CFLAGS += -MMD -MP -I$(LIB_HEAD_DIR)
 
 .SECONDEXPANSION:
 .PRECIOUS: %.c %.o
@@ -37,10 +41,10 @@ test : CFLAGS += -g -O0 -DDEBUG
 test : test_prep $(TEST_TARGET)
 
 %/$(TARGET) : $(addprefix %/, $(OBJS))
-	$(CC) -o $@ $^
+	$(CC) -o $@ $^ -L$(LIB_DIR) -l$(LIB_NAME)
 
 $(TEST_TARGET) : $(addprefix $(TEST_DIR)/, $(TEST_OBJS))
-	$(CC) -o $@ $^
+	$(CC) -o $@ $^ -L$(LIB_DIR) -l$(LIB_NAME)
 
 %.o : $(SRC_DIR)/$$(*F).c
 	$(CC) $(CFLAGS) -MT $@ -MF $(patsubst %.c,$(@D)/.dep/%.d,$(notdir $<)) -c $< -o $@
