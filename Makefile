@@ -1,7 +1,6 @@
 CC = gcc
 SRC_DIR = src
-SRCS = main.c Render.c
-ENTRY_POINT = main.c
+SRCS = main.c Render.c ClientCommu.c
 OBJS = $(SRCS:%.c=%.o)
 TARGET = Sli
 
@@ -10,13 +9,6 @@ DBG_TARGET = $(DBG_DIR)/$(TARGET)
 
 REL_DIR = Release
 REL_TARGET = $(REL_DIR)/$(TARGET)
-
-TEST_DIR = Test
-TEST_TARGET = $(TEST_DIR)/$(TARGET)_TEST
-TEST_ENTRY_POINT = AllTest.c
-TEST_SRCS = $(subst $(ENTRY_POINT),$(TEST_ENTRY_POINT),$(SRCS))
-TEST_SRCS += CuTest.c
-TEST_OBJS = $(TEST_SRCS:%.c=%.o)
 
 LIB_HEAD_DIR = $(SRC_DIR)/ncurses
 LIB_DIR = lib
@@ -37,13 +29,7 @@ debug : dbg_prep $(DBG_TARGET)
 release : CFLAGS += -O2 -DNDEBUG
 release : rel_prep $(REL_TARGET)
 
-test : CFLAGS += -g -O0 -DDEBUG
-test : test_prep $(TEST_TARGET)
-
 %/$(TARGET) : $(addprefix %/, $(OBJS))
-	$(CC) -o $@ $^ -L$(LIB_DIR) $(addprefix -l,$(LIB_NAME))
-
-$(TEST_TARGET) : $(addprefix $(TEST_DIR)/, $(TEST_OBJS))
 	$(CC) -o $@ $^ -L$(LIB_DIR) $(addprefix -l,$(LIB_NAME))
 
 %.o : $(SRC_DIR)/$$(*F).c
@@ -55,12 +41,8 @@ dbg_prep :
 rel_prep :
 	@mkdir -p $(REL_DIR)/.dep
 
-test_prep :
-	@mkdir -p $(TEST_DIR)/.dep
-
 clean :
 	@rm -drf $(DBG_DIR) $(REL_DIR) $(TEST_DIR)
 
 -include $(SRCS:%.c=$(DBG_DIR)/.dep/%.d)
 -include $(SRCS:%.c=$(REL_DIR)/.dep/%.d)
--include $(SRCS:%.c=$(TEST_DIR)/.dep/%.d)

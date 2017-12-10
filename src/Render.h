@@ -16,7 +16,7 @@ void DrawLine(WINDOW* win, Point start, Point end);
 
 void DrawStatusBar(WINDOW* win, Point pos, unsigned int score);
 
-void DrawRankingBar(WINDOW* win, char* ids);
+void DrawRankingBar(WINDOW* win, const char* ids);
 
 void* Render();
 

@@ -1,0 +1,5 @@
+void* RecvMsg() {
+}
+
+void* SendMsg() {
+}

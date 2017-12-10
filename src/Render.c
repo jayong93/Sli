@@ -1,6 +1,10 @@
 #include <malloc.h>
 #include <pthread.h>
+#include <stdio.h>
+#include <string.h>
 #include "Render.h"
+
+extern pthread_mutex_t rDataLock;
 
 void TransformToScreen(Point base, Point* target) {
 	target->x = (target->x - base.x) + ((WINDOW_WIDTH-2)/2) + 1;
@@ -14,7 +18,7 @@ void DrawLine(WINDOW* win, Point start, Point end) {
 	if (xoffset == 0 && yoffset == 0) return;
 	int cx = start.x + xoffset, cy = start.y + yoffset;
 
-	for (; cx != end.x || cy != end.y; cx += xoffset, cy += yoffset) {
+	for (; cx-xoffset != end.x || cy-yoffset != end.y; cx += xoffset, cy += yoffset) {
 		if (cx < 1 || cx > WINDOW_WIDTH-2) break;
 		if (cy < 1 || cy > WINDOW_HEIGHT-2) break;
 		mvwaddch(win, cy, cx, 'O');
@@ -22,13 +26,15 @@ void DrawLine(WINDOW* win, Point start, Point end) {
 }
 
 void DrawStatusBar(WINDOW* win, Point pos, unsigned int score) {
+	char scoreBuf[20];
 	mvwprintw(win, WINDOW_HEIGHT-1, 2, "X, Y: %d, %d", pos.x, pos.y);
-	mvwprintw(win, WINDOW_HEIGHT-1, WINDOW_WIDTH-22, "Score: %d", score);
+	sprintf(scoreBuf, "Score: %d", score);
+	mvwaddstr(win, WINDOW_HEIGHT-1, WINDOW_WIDTH-2-strlen(scoreBuf), scoreBuf);
 }
 
-void DrawRankingBar(WINDOW* win, char* ids) {
+void DrawRankingBar(WINDOW* win, const char* ids) {
 	int i;
-	char* data = ids;
+	const char* data = ids;
 
 	wmove(win, 0, 2);
 	waddstr(win, "Ranking: ");
@@ -41,7 +47,8 @@ void DrawRankingBar(WINDOW* win, char* ids) {
 		for (j=0; j<len; ++j) {
 			waddch(win, data[j]);
 		}
-		waddstr(win, ", ");
+		if (i<2)
+			waddstr(win, ", ");
 
 		data += len;
 	}
