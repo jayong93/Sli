@@ -44,8 +44,8 @@ int ConnectToServer(const char* id) {
 
 	MsgEntry enterMsg;
 	pid_t pid = getpid();
-	*((int*)enterMsg.msg) = pid;
-	strncpy(enterMsg.msg+sizeof(int), id, sizeof(enterMsg.msg)-sizeof(int));
+	enterMsg.msgType = pid;
+	memcpy(enterMsg.msg, id, sizeof(enterMsg.msg));
 	if (msgsnd(enterQueue, &enterMsg, BUF_SIZE, 0) < 0) {
 		perror("Failed to send a message");
 		return -1;
@@ -183,12 +183,19 @@ void* RecvMsg() {
 
 			int* nPoints = (int*)(renderData+rlen);
 			RecvFromServer(&rlen, sizeof(int));
-			for (int i=0; i<(*nPoints*2); ++i) {
+			for (int i=0; i<*nPoints; ++i) {
 				// points
-				RecvFromServer(&rlen, sizeof(int));
+				RecvFromServer(&rlen, sizeof(int)*2);
 			}
 		}
 
+		int* nStars = (int*)(renderData+rlen);
+		RecvFromServer(&rlen, sizeof(int));
+		for (int i=0; i<*nStars; ++i) {
+			RecvFromServer(&rlen, sizeof(int)*2);
+		}
+
+		// ranking
 		for (int i=0; i<3; ++i) {
 			int* idLen = (int*)(renderData+rlen);
 			RecvFromServer(&rlen, sizeof(int));
@@ -204,7 +211,39 @@ void* RecvMsg() {
 }
 
 void* SendMsg() {
-#ifdef USE_FIFO
+	int pid = getpid();
+	int isBoost = FALSE;
+	while(1) {
+		if (mainWin) {
+			int ch = wgetch(mainWin);
+			switch (ch) {
+				case KEY_LEFT:
+					ch = 'l';
+					break;
+				case KEY_RIGHT:
+					ch = 'r';
+					break;
+				case KEY_UP:
+					ch = 'u';
+					break;
+				case KEY_DOWN:
+					ch = 'd';
+					break;
+				case ' ':
+					ch = isBoost?'x':'o';
+					break;
+			}
+#ifndef USE_FIFO
+			MsgEntry msg;
+			msg.msgType = pid;
+			memcpy(msg.msg, &ch, sizeof(ch));
+			if(msgsnd(channelSnd, &msg, sizeof(ch), 0) < 0) {
+				perror("Failed to send message");
+				exit(3);
+			}
 #else
+			// TODO: PIPE 통신 구현
 #endif
+		}
+	}
 }
