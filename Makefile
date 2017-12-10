@@ -15,6 +15,9 @@ LIB_DIR = lib
 LIB_NAME = ncursesw pthread
 
 CFLAGS += -MMD -MP -I$(LIB_HEAD_DIR)
+ifeq ($(PIPE), 1)
+	CFLAGS += -DUSE_FIFO
+endif
 
 .SECONDEXPANSION:
 .PRECIOUS: %.c %.o

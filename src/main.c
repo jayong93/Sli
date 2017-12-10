@@ -1,10 +1,69 @@
 #define NCURSES_WIDECHAR 1
+#define SERVER_FIFO_NAME "/tmp/.Sli/enter"
 
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <locale.h>
+#include <signal.h>
 #include <ncursesw/curses.h>
 #include "Render.h"
+
+int isConnected = 0;
+int channel_in = -1;
+int channel_out = -1;
+
+void SigUserHandler(int signo) {
+	isConnected = 1
+}
+
+int ConnectToServer(const char* id) {
+#ifdef USE_FIFO
+#else
+	int fd;
+	if ((fd = open(SERVER_FIFO_NAME, O_WRONLY)) < 0) {
+		perror("A Server does not exist")
+		return -1;
+	}
+
+	struct sigaction act;
+	act.sa_handler = SigUserHandler;
+	sigfillset(&(act.sa_mask));
+	sigaction(SIGUSR1, &act, NULL);
+
+	char id_buf[100];
+	pid_t pid = getpid();
+	snprintf(id_buf, sizeof(id_buf)/sizeof(*id_buf), "%d %s\n", pid, id);
+	if (write(fd, id_buf, strlen(id_buf)) < 0) {
+		perror("Writing failed");
+		close(fd);
+		return -1;
+	}
+	close(fd);
+
+	do {
+		pause();
+	} while(!isConnected);
+
+	char fifoName[150];
+	snprintf(fifoName, sizeof(fifoName)/sizeof(*fifoName)-1, "/tmp/.Sli/%d_%s", pid, id);
+	int nameLen = strlen(fifoName);
+	fifoName[nameLen+1] = 0;
+	fifoName[nameLen] = 'i';
+	if ((channel_in = open(fifoName, O_RDRW)) < 0) {
+		perror("failed to open input channel");
+		return -1;
+	}
+	fifoName[nameLen] = 'o';
+	if ((channel_out = open(fifoName, O_RDRW)) < 0) {
+		perror("failed to open output channel");
+		close(channel_in);
+		return -1;
+	}
+
+	return 0;
+#endif
+}
 
 int main(){
 	WINDOW* mainWin;

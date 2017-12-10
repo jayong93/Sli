@@ -1,5 +1,3 @@
-void* RecvMsg() {
-}
+void* RecvMsg();
 
-void* SendMsg() {
-}
+void* SendMsg();
