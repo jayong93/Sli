@@ -11,9 +11,9 @@ Client
 		lock
 		copy render data to local
 		unlock
+		draw status bar
 		transform my world coord to screen coord
 		draw my character
-		draw status bar
 
 		for (users) {
 			transform world coord to screen coord

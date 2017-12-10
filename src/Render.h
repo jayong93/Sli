@@ -18,4 +18,6 @@ void DrawStatusBar(WINDOW* win, Point pos, unsigned int score);
 
 void DrawRankingBar(WINDOW* win, char* ids);
 
+void* Render();
+
 #endif

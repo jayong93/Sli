@@ -20,7 +20,7 @@ TEST_OBJS = $(TEST_SRCS:%.c=%.o)
 
 LIB_HEAD_DIR = $(SRC_DIR)/ncurses
 LIB_DIR = lib
-LIB_NAME = ncursesw
+LIB_NAME = ncursesw pthread
 
 CFLAGS += -MMD -MP -I$(LIB_HEAD_DIR)
 
@@ -41,10 +41,10 @@ test : CFLAGS += -g -O0 -DDEBUG
 test : test_prep $(TEST_TARGET)
 
 %/$(TARGET) : $(addprefix %/, $(OBJS))
-	$(CC) -o $@ $^ -L$(LIB_DIR) -l$(LIB_NAME)
+	$(CC) -o $@ $^ -L$(LIB_DIR) $(addprefix -l,$(LIB_NAME))
 
 $(TEST_TARGET) : $(addprefix $(TEST_DIR)/, $(TEST_OBJS))
-	$(CC) -o $@ $^ -L$(LIB_DIR) -l$(LIB_NAME)
+	$(CC) -o $@ $^ -L$(LIB_DIR) $(addprefix -l,$(LIB_NAME))
 
 %.o : $(SRC_DIR)/$$(*F).c
 	$(CC) $(CFLAGS) -MT $@ -MF $(patsubst %.c,$(@D)/.dep/%.d,$(notdir $<)) -c $< -o $@
