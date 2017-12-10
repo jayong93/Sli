@@ -1,6 +1,6 @@
 CC = gcc
 SRC_DIR = src
-SRCS = main.c Render.c ClientCommu.c
+SRCS = main.c Render.c ClientCommu.c Util.c
 OBJS = $(SRCS:%.c=%.o)
 TARGET = Sli
 
