@@ -193,6 +193,8 @@ void* Render() {
 
 		qsort(scores.ptr, scores.len/(sizeof(int)*2), sizeof(int)*2, ScoreCmp);
 		DrawRankingBar(mainWin, (const int*)scores.ptr, (const size_t*)ids.ptr, nPlayer);
+
+		wrefresh(mainWin);
 	}
 
 	VBDestroy(&scores);
