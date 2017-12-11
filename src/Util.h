@@ -8,6 +8,7 @@ typedef struct VBuffer_ {
 } VBuffer;
 
 VBuffer VBCreate(size_t size);
-int VBAppend(VBuffer* buf, char* source, size_t size);
-int VBReplace(VBuffer* buf, char* source, size_t size);
+int VBAppend(VBuffer* buf, void* source, size_t size);
+int VBReplace(VBuffer* buf, void* source, size_t size);
 void VBDestroy(VBuffer* buf);
+int VBClear(VBuffer* buf);

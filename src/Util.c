@@ -27,9 +27,8 @@ VBuffer VBCreate(size_t size) {
 	return vb;
 }
 
-int VBAppend(VBuffer* buf, char* source, size_t size) {
+int VBAppend(VBuffer* buf, void* source, size_t size) {
 	if (buf->ptr == NULL) return 0;
-	if (source == NULL) return 0;
 	if (size == 0) return 1;
 
 	if ((buf->maxLen - buf->len) < size) {
@@ -37,11 +36,15 @@ int VBAppend(VBuffer* buf, char* source, size_t size) {
 		buf->maxLen = newSize;
 		buf->ptr = (char*)realloc(buf->ptr, newSize);
 	}
-	memcpy(buf->ptr + buf->len, source, size);
-	buf->len += size;
+	if (source) {
+		memcpy(buf->ptr + buf->len, source, size);
+		buf->len += size;
+	}
+
+	return 1;
 }
 
-int VBReplace(VBuffer* buf, char* source, size_t size) {
+int VBReplace(VBuffer* buf, void* source, size_t size) {
 	if (buf->ptr == NULL) return 0;
 	if (source == NULL) return 0;
 	if (size == 0) return 1;
@@ -54,6 +57,7 @@ int VBReplace(VBuffer* buf, char* source, size_t size) {
 	}
 	memcpy(buf->ptr, source, size);
 	buf->len = size;
+	return 1;
 }
 
 void VBDestroy(VBuffer* buf) {
@@ -61,4 +65,12 @@ void VBDestroy(VBuffer* buf) {
 		free(buf->ptr);
 	}
 	memset(buf, 0, sizeof(*buf));
+}
+
+int VBClear(VBuffer* buf) {
+	if (buf->ptr) {
+		buf->len = 0;
+		return 1;
+	}
+	return 0;
 }

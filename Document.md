@@ -68,35 +68,36 @@ Rendering Thread의 함수
 자신의 캐릭터의 위치와 점수를 상태표시줄에 그린다.
 
 
-### void DrawRankingBar(WINDOW* win, char* ids)
-상위 3 플레이어의 이름을 출력한다.  
+### void DrawRankingBar(WINDOW* win, const int* idxList, const size_t* idList, int playerNum)
+idxList에 있는 상위 3 플레이어의 index를 통해 순위를 출력한다.  
 총 플레이어가 3명 미만일 경우에는 없는 플레이어에 대해 문자열 길이를 0으로 표시한다.
 
 
-### void ConnectToServer(const char* id);
+### void ConnectToServer(const char* id)
 서버에 닉네임을 통해 접속
 
 
-### void* MovePointer(char** ptr, int offset);
-### void* MovePointerStep(char** ptr, int step, int offset);
+### void* MovePointer(char** ptr, int offset)
+### void* MovePointerStep(char** ptr, int step, int offset)
 주어진 포인터를 이동해가며 offset만큼 읽고 반환
 
-### void GetRankIndex(const int** sList, size_t sNum, int* iList, size_t iNum);
-sList의 데이터에서 상위 iNum개의 index만 iList에 저장한다.
-
-### VBuffer VBCreate(size_t size);
+### VBuffer VBCreate(size_t size)
 VBuffer 생성. size가 0이면 VB는 0으로 채워진다.
 
-### int VBAppend(VBuffer* buf, char* source, size_t size);
+### int VBAppend(VBuffer* buf, void* source, size_t size)
 VBuffer 뒤에 size만큼 source의 내용을 붙여넣는다.  
-VB 크기가 충분하지 않으면 realloc한다.
+source가 NULL이면 size만큼의 공간을 확보한다.  
+이미 공간이 충분하면 아무 일도 하지 않는다. VB 크기가 충분하지 않으면 realloc한다.
 
-### int VBReplace(VBuffer* buf, char* source, size_t size);
+### int VBReplace(VBuffer* buf, void* source, size_t size)
 VBuffer의 내용을 source의 size만큼으로 처음부터 채워 넣는다.  
 VB 크기가 충분하지 않으면 free한 후 malloc한다.
 
-### void VBDestroy(VBuffer* buf);
+### void VBDestroy(VBuffer* buf)
 VBuffer를 제거한다. VB 안은 0으로 채워진다.
+
+### int VBClear(VBuffer* buf)
+VBuffer의 내용을 제거한다. 정확히는 len값을 초기화한다.
 
 ## Structure
 
