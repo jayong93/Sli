@@ -116,20 +116,21 @@ void RecvFromPipe(VBuffer* buf, size_t nRead) {
 	int ret;
 	VBAppend(buf, NULL, nRead);
 	// 파이프가 닫혔을 때 종료
-	if (ret = read(channelRcv, buf->ptr + buf->len, nRead) == 0)
+	if (ret = read(channelRcv, buf->ptr, nRead) == 0)
 		exit(5);
 	
-	buf->len += ret;
+	buf->len = ret;
 }
 
 void RecvFromMsgQueue(VBuffer* buf, size_t nRead) {
 	if (nRead == 0) return;
 
 	int ret;
+	VBClear(&msgBuf);
 	VBAppend(&msgBuf, NULL, sizeof(long)+nRead);
 	if (ret = msgrcv(channelRcv, msgBuf.ptr, nRead, pid, 0) < 0)
 		exit(5);
-	VBAppend(buf, msgBuf.ptr+sizeof(long), ret);
+	VBReplace(buf, msgBuf.ptr+sizeof(long), ret);
 }
 
 void RecvFromServer(VBuffer* buf, size_t nRead) {
@@ -153,7 +154,6 @@ void* RecvMsg() {
 		if (*(int*)(msgBuf.ptr) < 0) exit(5);
 #endif
 		size_t dataLen = (size_t)(*(int*)(msgBuf.ptr));
-		VBClear(&msgBuf);
 		RecvFromServer(&renderData, dataLen);
 		pthread_cond_signal(&dataCopyCond);
 		pthread_mutex_unlock(&rDataLock);
