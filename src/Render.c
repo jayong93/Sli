@@ -48,7 +48,8 @@ void DrawRankingBar(WINDOW* win, const int* idxList, const size_t* idList, int p
 	wmove(win, 0, 2);
 	waddstr(win, "Ranking: ");
 	int renderCount = (playerNum < 3)?playerNum:3;
-	for (int i=0; i<renderCount; ++i) {
+	int i;
+	for (i=0; i<renderCount; ++i) {
 		const int* pId = (const int*)idList[idxList[i*2]];
 		int len = *pId++;
 		const char* data = (const char*)pId;
@@ -127,8 +128,10 @@ void* Render() {
 		VBClear(&scores);
 		VBClear(&ids);
 
+		int i;
+
 		// Get scores, ids, camera pos
-		for (int i=0; i<nPlayer; ++i) {
+		for (i=0; i<nPlayer; ++i) {
 			VBAppend(&scores, &i, sizeof(int));
 			VBAppend(&scores, (int*)MovePointer(&pData, sizeof(int)), sizeof(int));
 			MovePointer(&pData, sizeof(int));
@@ -160,7 +163,7 @@ void* Render() {
 
 		// Draw players
 		Point p1, p2;
-		for (int i=0; i<nPlayer; ++i) {
+		for (i=0; i<nPlayer; ++i) {
 			MovePointer(&pRender, sizeof(int));
 			int color = *(int*)MovePointer(&pRender, sizeof(int));
 			int idLen = *(int*)MovePointer(&pRender, sizeof(int));
@@ -174,7 +177,8 @@ void* Render() {
 			wattroff(mainWin, COLOR_PAIR(1));
 
 			wattron(mainWin, COLOR_PAIR(color));
-			for (int j=1; j<nPoints; ++j) {
+			int j;
+			for (j=1; j<nPoints; ++j) {
 				p2 = *(Point*)MovePointer(&pRender, sizeof(Point));
 				TransformToScreen(camPos, &p2);
 				DrawLine(mainWin, p1, p2);
@@ -185,7 +189,7 @@ void* Render() {
 
 		int nStar = *(int*)MovePointer(&pRender, sizeof(int));
 		Point star;
-		for (int i=0; i<nStar; ++i) {
+		for (i=0; i<nStar; ++i) {
 			star = *(Point*)MovePointer(&pRender, sizeof(Point));
 			TransformToScreen(camPos, &star);
 			mvwaddch(mainWin, star.y, star.x, STAR);
