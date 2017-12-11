@@ -15,8 +15,8 @@
 extern pthread_mutex_t rDataLock;
 extern pthread_cond_t dataCopyCond;
 WINDOW* mainWin;
-extern char* renderData;
-extern int nRenderData;
+extern VBuffer renderData;
+extern const char* myID;
 
 void TransformToScreen(Point base, Point* target) {
 	target->x = (target->x - base.x) + ((WINDOW_WIDTH-2)/2) + 1;
@@ -44,26 +44,30 @@ void DrawStatusBar(WINDOW* win, Point pos, unsigned int score) {
 	mvwaddstr(win, WINDOW_HEIGHT-1, WINDOW_WIDTH-2-strlen(scoreBuf), scoreBuf);
 }
 
-void DrawRankingBar(WINDOW* win, const char* ids) {
-	int i;
-	const char* data = ids;
-
+void DrawRankingBar(WINDOW* win, const int* idxList, const size_t* idList, int playerNum) {
 	wmove(win, 0, 2);
 	waddstr(win, "Ranking: ");
-	for (i=0; i<3; ++i) {
-		int len = *(int*)data;
-		int j;
-		data += sizeof(int);
+	int renderCount = (playerNum < 3)?playerNum:3;
+	for (int i=0; i<renderCount; ++i) {
+		const int* pId = (const int*)idList[idxList[i*2]];
+		int len = *pId++;
+		const char* data = (const char*)pId;
 
 		wprintw(win, "%d. ", i);
-		for (j=0; j<len; ++j) {
+		for (int j=0; j<len; ++j) {
 			waddch(win, data[j]);
 		}
-		if (i<2)
+		if (i<renderCount-1)
 			waddstr(win, ", ");
-
-		data += len;
 	}
+}
+
+int ScoreCmp(const void* a, const void* b) {
+	int aScore = ((int*)a)[1];
+	int bScore = ((int*)b)[1];
+	if (aScore > bScore) return -1;
+	if (aScore < bScore) return 1;
+	return 0;
 }
 
 void* Render() {
@@ -77,7 +81,7 @@ void* Render() {
 	{
 		start_color();
 		int ignore[] = {0, 16, 8};
-		// COLOR_PAIR 번호는 1~228
+		// COLOR_PAIR 번호는 1~227
 		for (int i=0, j=0; i<227; ++i, ++j) {
 			for (int t=0; t < (sizeof(ignore)/sizeof(*ignore)); ++t) {
 				if (ignore[t] == j) {
@@ -102,83 +106,97 @@ void* Render() {
 
 	box(mainWin, 0, 0);
 
-	int localDataLen = 0;
-	int maxDataLen = 0;
-	char* localData = NULL;
+	VBuffer localBuf = VBCreate(50);
+	VBuffer scores = VBCreate(80);
+	VBuffer ids = VBCreate(40);	// [#len|data(without null)]
 	while(1) {
 		// 렌더링 데이터 복사
 		pthread_mutex_lock(&rDataLock);
 		pthread_cond_wait(&dataCopyCond, &rDataLock);
-		localDataLen = nRenderData;
-		if (maxDataLen < localDataLen) {
-			if (localData) free(localData);
-			maxDataLen = (int)(localDataLen*1.5);
-			localData = (char*)malloc(maxDataLen);
-		}
-		memcpy(localData, renderData, localDataLen);
+		VBReplace(&localBuf, renderData.ptr, renderData.len);
 		pthread_mutex_unlock(&rDataLock);
 
-		char* pData = localData;
-
-		int myScore = *(int*)MovePointer(&pData, sizeof(int));
-		int myColor = *(int*)MovePointer(&pData, sizeof(int));
-		int myPointsNum = *(int*)MovePointer(&pData, sizeof(int));
-		Point p1, p2, myHead;
-		myHead = *(Point*)MovePointer(&pData, sizeof(Point));
-
-		DrawStatusBar(mainWin, myHead, myScore);
-
-		// Draw my Data
-		TransformToScreen(myHead, &p1);
-		wattron(mainWin, COLOR_PAIR(1));
-		mvwaddch(mainWin, p1.y, p1.x, BODY);
-		wattroff(mainWin, COLOR_PAIR(1));
-
-		wattron(mainWin, COLOR_PAIR(myColor));
-		for (int i=1; i<myPointsNum; ++i) {
-			p2 = *(Point*)MovePointer(&pData, sizeof(Point));
-			TransformToScreen(myHead, &p2);
-			DrawLine(mainWin, p1, p2);
-
-			p1 = p2;
-		}
-		wattroff(mainWin, COLOR_PAIR(myColor));
-
-		// Draw other players
+		char* pData = localBuf.ptr;
 		int nPlayer = *(int*)MovePointer(&pData, sizeof(int));
+		char* pRender = pData;
+
+		char playerID[11];
+		int myIndex = -1;
+		Point camPos;
+
+		VBClear(&scores);
+		VBClear(&ids);
+
+		// Get scores, ids, camera pos
 		for (int i=0; i<nPlayer; ++i) {
-			int color = *(int*)MovePointer(&pData, sizeof(int));
-			int idLen = *(int*)MovePointer(&pData, sizeof(int));
-			char* id = (char*)MovePointer(&pData, idLen);
+			VBAppend(&scores, &i, sizeof(int));
+			VBAppend(&scores, (int*)MovePointer(&pData, sizeof(int)), sizeof(int));
+			MovePointer(&pData, sizeof(int));
+			int* idLen = (int*)MovePointer(&pData, sizeof(int));
+			VBAppend(&ids, &idLen, sizeof(idLen));
+
+			size_t rCount = (*idLen > 10)?10:*idLen;
+			strncpy(playerID, (char*)MovePointer(&pData, *idLen), rCount);
+			playerID[rCount] = 0;
+			if (myIndex < 0 && strcmp(playerID, myID) == 0) {
+				myIndex = i;
+			}
 
 			int nPoints = *(int*)MovePointer(&pData, sizeof(int));
-			p1 = *(Point*)MovePointer(&pData, sizeof(Point));
-			TransformToScreen(myHead, &p1);
+			int j=0;
+			if (myIndex == i) {
+				camPos = *(Point*)MovePointer(&pData, sizeof(Point));
+				j++;
+			}
+
+			for(; j<nPoints; ++j) {
+				MovePointer(&pData, sizeof(Point));
+			}
+		}
+
+		// Draw Status Bar
+		if (myIndex >= 0)
+			DrawStatusBar(mainWin, camPos, scores.ptr[myIndex]);
+
+		// Draw players
+		Point p1, p2;
+		for (int i=0; i<nPlayer; ++i) {
+			MovePointer(&pRender, sizeof(int));
+			int color = *(int*)MovePointer(&pRender, sizeof(int));
+			int idLen = *(int*)MovePointer(&pRender, sizeof(int));
+			char* id = (char*)MovePointer(&pRender, idLen);
+
+			int nPoints = *(int*)MovePointer(&pRender, sizeof(int));
+			p1 = *(Point*)MovePointer(&pRender, sizeof(Point));
+			TransformToScreen(camPos, &p1);
 			wattron(mainWin, COLOR_PAIR(1));
 			mvwaddch(mainWin, p1.y, p1.x, BODY);
 			wattroff(mainWin, COLOR_PAIR(1));
 
 			wattron(mainWin, COLOR_PAIR(color));
 			for (int j=1; j<nPoints; ++j) {
-				p2 = *(Point*)MovePointer(&pData, sizeof(Point));
-				TransformToScreen(myHead, &p2);
+				p2 = *(Point*)MovePointer(&pRender, sizeof(Point));
+				TransformToScreen(camPos, &p2);
 				DrawLine(mainWin, p1, p2);
 				p1 = p2;
 			}
 			wattroff(mainWin, COLOR_PAIR(color));
 		}
 
-		int nStar = *(int*)MovePointer(&pData, sizeof(int));
+		int nStar = *(int*)MovePointer(&pRender, sizeof(int));
 		Point star;
 		for (int i=0; i<nStar; ++i) {
-			star = *(Point*)MovePointer(&pData, sizeof(Point));
-			TransformToScreen(myHead, &star);
+			star = *(Point*)MovePointer(&pRender, sizeof(Point));
+			TransformToScreen(camPos, &star);
 			mvwaddch(mainWin, star.y, star.x, STAR);
 		}
 
-		DrawRankingBar(mainWin, pData);
+		qsort(scores.ptr, scores.len/(sizeof(int)*2), sizeof(int)*2, ScoreCmp);
+		DrawRankingBar(mainWin, (const int*)scores.ptr, (const size_t*)ids.ptr, nPlayer);
 	}
 
-	if (localData) free(localData);
+	VBDestroy(&scores);
+	VBDestroy(&ids);
+	VBDestroy(&localBuf);
 	endwin();
 }

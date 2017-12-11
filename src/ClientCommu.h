@@ -9,4 +9,4 @@ void* RecvMsg();
 
 void* SendMsg();
 
-int ConnectToServer(const char* id);
+int ConnectToServer();

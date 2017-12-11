@@ -8,18 +8,20 @@
 
 pthread_mutex_t rDataLock;
 pthread_cond_t dataCopyCond;
+const char* myID;
 
 int main(int argc, char* argv[]){
 	if (argc < 2) {
 		fprintf(stderr, "not enough arguments\n");
 		return 1;
 	}
-	if (strlen(argv[1]) > 90) {
-		fprintf(stderr, "the ID is too long\n");
+	if (strlen(argv[1]) > 10) {
+		fprintf(stderr, "the maximum ID length is 10\n");
 		return 2;
 	}
+	myID = argv[1];
 
-	if (ConnectToServer(argv[1]) < 0) {
+	if (ConnectToServer() < 0) {
 		return 3;
 	}
 
