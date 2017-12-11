@@ -1,14 +1,17 @@
 CC = gcc
 SRC_DIR = src
-SRCS = main.c Render.c ClientCommu.c Util.c
-OBJS = $(SRCS:%.c=%.o)
+CLIT_SRCS = main.c ClientCommu.c Render.c Util.c
+SERV_SRCS = main_s.c functions.c
+SERV_OBJS = $(SERV_SRCS:%.c=%.o)
+CLIT_OBJS = $(CLIT_SRCS:%.c=%.o)
 TARGET = Sli
+SERV_TARGET = Sli_Server
 
 DBG_DIR = Debug
-DBG_TARGET = $(DBG_DIR)/$(TARGET)
+DBG_TARGET = $(DBG_DIR)/$(TARGET) $(DBG_DIR)/$(SERV_TARGET)
 
 REL_DIR = Release
-REL_TARGET = $(REL_DIR)/$(TARGET)
+REL_TARGET = $(REL_DIR)/$(TARGET) $(REL_DIR)/$(SERV_TARGET)
 
 LIB_HEAD_DIR = $(SRC_DIR)/ncurses
 LIB_DIR = lib
@@ -32,7 +35,10 @@ debug : dbg_prep $(DBG_TARGET)
 release : CFLAGS += -O2 -DNDEBUG
 release : rel_prep $(REL_TARGET)
 
-%/$(TARGET) : $(addprefix %/, $(OBJS))
+%/$(TARGET) : $(addprefix %/, $(CLIT_OBJS))
+	$(CC) -o $@ $^ -L$(LIB_DIR) $(addprefix -l,$(LIB_NAME))
+
+%/$(SERV_TARGET) : $(addprefix %/, $(SERV_OBJS))
 	$(CC) -o $@ $^ -L$(LIB_DIR) $(addprefix -l,$(LIB_NAME))
 
 %.o : $(SRC_DIR)/$$(*F).c
