@@ -1,7 +1,7 @@
 #ifndef RENDER_H
 #define RENDER_H
 
-#include <ncursesw/curses.h>
+#include <ncurses.h>
 
 #define WINDOW_WIDTH 113
 #define WINDOW_HEIGHT 35
