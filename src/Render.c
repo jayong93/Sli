@@ -19,8 +19,8 @@ extern VBuffer renderData;
 extern const char* myID;
 
 void TransformToScreen(Point base, Point* target) {
-	target->x = (target->x - base.x) + ((WINDOW_WIDTH-2)/2) + 1;
-	target->y = (target->y - base.y) + ((WINDOW_HEIGHT-2)/2) + 1;
+	target->x = (target->x - base.x)/10 + ((WINDOW_WIDTH-2)/2) + 1;
+	target->y = (target->y - base.y)/10 + ((WINDOW_HEIGHT-2)/2) + 1;
 }
 
 void DrawLine(WINDOW* win, Point start, Point end) {
