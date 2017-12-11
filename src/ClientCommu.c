@@ -1,4 +1,4 @@
-#define SERVER_FIFO_NAME "/tmp/.Sli/enter"
+#define SERVER_FIFO_NAME "listen_fifo"
 #define IPC_KEY_CON 60170
 #define IPC_KEY_SND 60179
 #define IPC_KEY_RCV 60178
@@ -12,6 +12,8 @@
 #include <pthread.h>
 #include <sys/msg.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <ncursesw/curses.h>
 #include "ClientCommu.h"
 #include "Util.h"
@@ -55,9 +57,11 @@ int ConnectToServer() {
 		return -1;
 	}
 
+	printf("Waiting Signal\n");
 	do {
 		pause();
 	} while(!isConnected);
+	printf("Signal Received\n");
 
 	if ((channelRcv = msgget(IPC_KEY_RCV, 0666|IPC_CREAT)) < 0) {
 		perror("Failed to get the recv queue");
@@ -71,8 +75,17 @@ int ConnectToServer() {
 
 #else
 	int fd;
+	char inPipeName[50];
+	char outPipeName[50];
+	snprintf(inPipeName, sizeof(inPipeName)/sizeof(*inPipeName)-1, "%s_sc", myID);
+	snprintf(outPipeName, sizeof(outPipeName)/sizeof(*outPipeName)-1, "%s_cs", myID);
 	if ((fd = open(SERVER_FIFO_NAME, O_WRONLY)) < 0) {
 		perror("A Server does not exist");
+		return -1;
+	}
+
+	if (mkfifo(inPipeName, 0666) < 0) {
+		perror("Failed to make In FIFO");
 		return -1;
 	}
 
@@ -85,23 +98,21 @@ int ConnectToServer() {
 		close(fd);
 		return -1;
 	}
-	close(fd);
+	//close(fd);
 
-	do {
-		pause();
-	} while(!isConnected);
-
-	char fifoName[50];
-	snprintf(fifoName, sizeof(fifoName)/sizeof(*fifoName)-1, "/tmp/.Sli/%d_%s", pid, myID);
-	int fifoLen = strlen(fifoName);
-	fifoName[fifoLen+1] = 0;
-	fifoName[fifoLen] = 'i';
-	if ((channelRcv = open(fifoName, O_RDONLY)) < 0) {
+	if ((channelRcv = open(inPipeName, O_RDONLY)) < 0) {
 		perror("failed to open input channel");
 		return -1;
 	}
-	fifoName[nameLen] = 'o';
-	if ((channelSnd = open(fifoName, O_WRONLY)) < 0) {
+
+	printf("Waiting Signal\n");
+	while(!isConnected) {
+		pause();
+		printf("Some Signal Received\n");
+	}
+	printf("Signal Received\n");
+
+	if ((channelSnd = open(outPipeName, O_WRONLY)) < 0) {
 		perror("failed to open output channel");
 		close(channelRcv);
 		return -1;
