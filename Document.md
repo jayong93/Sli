@@ -5,7 +5,7 @@
 Screen Size = 133 * 40
 
 ### Render Data 구조
-#user|(score|color|#id|str_id|#points|points(X,Y world coord))|...|#star|stars(X,Y world coord) 
+#user|(score|color|#id|str_id|#points|points(X,Y world coord))|...|#star|stars(X,Y world coord)  
 실제 데이터 바로 앞에 데이터의 전체 크기가 int형으로 온다.
 
 ## Function
@@ -60,7 +60,7 @@ Rendering Thread의 함수
 
 
 ### void TransformToScreen(Point base, Point* target)
-주어진 기준점과 화면 크기를 이용해서 target의 좌표를 화면 좌표계로 변환한다. 
+주어진 기준점과 화면 크기를 이용해서 target의 좌표를 화면 좌표계로 변환한다.  
 (target-base)+((WINDOW_SIZE-2)/2)+1
 
 
@@ -69,7 +69,7 @@ Rendering Thread의 함수
 
 
 ### void DrawRankingBar(WINDOW* win, char* ids)
-상위 3 플레이어의 이름을 출력한다. 
+상위 3 플레이어의 이름을 출력한다.  
 총 플레이어가 3명 미만일 경우에는 없는 플레이어에 대해 문자열 길이를 0으로 표시한다.
 
 
