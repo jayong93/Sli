@@ -16,9 +16,14 @@ Rendering Thread의 함수
 	lock
 	copy render data to local
 	unlock
+
+	for (users) {
+		save user scores
+		save user id
+		save camera pos
+	}
+
 	draw status bar
-	transform my world coord to screen coord
-	draw my character
 
 	for (users) {
 		transform world coord to screen coord
@@ -27,9 +32,8 @@ Rendering Thread의 함수
 	for (stars) {
 		draw star
 	}
-	for (three scores) {
-		draw ranking bar
-	}
+
+	draw ranking bar
 
 	refresh
 
@@ -73,8 +77,8 @@ idxList에 있는 상위 3 플레이어의 index를 통해 순위를 출력한�
 총 플레이어가 3명 미만일 경우에는 없는 플레이어에 대해 문자열 길이를 0으로 표시한다.
 
 
-### void ConnectToServer(const char* id)
-서버에 닉네임을 통해 접속
+### void ConnectToServer()
+서버에 닉네임을 통해 접속. 닉네임은 전역변수에 저장됨.
 
 
 ### void* MovePointer(char** ptr, int offset)
