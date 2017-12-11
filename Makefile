@@ -12,7 +12,7 @@ REL_TARGET = $(REL_DIR)/$(TARGET)
 
 LIB_HEAD_DIR = $(SRC_DIR)/ncurses
 LIB_DIR = lib
-LIB_NAME = ncursesw pthread
+LIB_NAME = ncurses pthread
 
 CFLAGS += -MMD -MP -I$(LIB_HEAD_DIR)
 ifeq ($(PIPE), 1)
