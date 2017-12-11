@@ -55,7 +55,8 @@ void DrawRankingBar(WINDOW* win, const int* idxList, const size_t* idList, int p
 		const char* data = (const char*)pId;
 
 		wprintw(win, "%d. ", i);
-		for (int j=0; j<len; ++j) {
+		int j;
+		for (j=0; j<len; ++j) {
 			waddch(win, data[j]);
 		}
 		if (i<renderCount-1)
@@ -83,8 +84,10 @@ void* Render() {
 		start_color();
 		int ignore[] = {0, 16, 8};
 		// COLOR_PAIR 번호는 1~227
-		for (int i=0, j=0; i<227; ++i, ++j) {
-			for (int t=0; t < (sizeof(ignore)/sizeof(*ignore)); ++t) {
+		int i, j;
+		for (i=0, j=0; i<227; ++i, ++j) {
+			int t;
+			for (t=0; t < (sizeof(ignore)/sizeof(*ignore)); ++t) {
 				if (ignore[t] == j) {
 					++j;
 					t = -1;
