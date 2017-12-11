@@ -81,14 +81,31 @@ Rendering Thread의 함수
 ### void* MovePointerStep(char** ptr, int step, int offset);
 주어진 포인터를 이동해가며 offset만큼 읽고 반환
 
+### void GetRankIndex(const int** sList, size_t sNum, int* iList, size_t iNum);
+sList의 데이터에서 상위 iNum개의 index만 iList에 저장한다.
+
+### VBuffer VBCreate(size_t size);
+VBuffer 생성. size가 0이면 VB는 0으로 채워진다.
+
+### int VBAppend(VBuffer* buf, char* source, size_t size);
+VBuffer 뒤에 size만큼 source의 내용을 붙여넣는다.  
+VB 크기가 충분하지 않으면 realloc한다.
+
+### int VBReplace(VBuffer* buf, char* source, size_t size);
+VBuffer의 내용을 source의 size만큼으로 처음부터 채워 넣는다.  
+VB 크기가 충분하지 않으면 free한 후 malloc한다.
+
+### void VBDestroy(VBuffer* buf);
+VBuffer를 제거한다. VB 안은 0으로 채워진다.
+
 ## Structure
 
-struct Point {
-	int x, y;
-}
+	struct Point {
+		int x, y;
+	}
 
-
-
-
-
-
+	struct VBuffer {
+		char* head;
+		size_t maxLen;
+		size_t len;
+	}
