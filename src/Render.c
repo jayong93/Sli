@@ -73,19 +73,18 @@ int ScoreCmp(const void* a, const void* b) {
 }
 
 void* Render() {
-	int isColor;
-
+	int nColor;
 	setlocale(LC_CTYPE, "ko_KR.utf-8");
 
 	initscr();
-	isColor = has_colors();
-	if (isColor)
+	if (has_colors())
 	{
 		start_color();
 		int ignore[] = {0, 16, 8};
-		// COLOR_PAIR 번호는 1~227
+		// COLOR_PAIR 번호는 1~64
 		int i, j;
-		for (i=0, j=0; i<227; ++i, ++j) {
+		nColor = (COLOR_PAIRS<227)?COLOR_PAIRS:227;
+		for (i=0, j=0; i<nColor; ++i, ++j) {
 			int t;
 			for (t=0; t < (sizeof(ignore)/sizeof(*ignore)); ++t) {
 				if (ignore[t] == j) {
@@ -169,6 +168,7 @@ void* Render() {
 		for (i=0; i<nPlayer; ++i) {
 			MovePointer(&pRender, sizeof(int));
 			int color = *(int*)MovePointer(&pRender, sizeof(int));
+			color = color%nColor + 1;
 			int idLen = *(int*)MovePointer(&pRender, sizeof(int));
 			char* id = (char*)MovePointer(&pRender, idLen);
 
