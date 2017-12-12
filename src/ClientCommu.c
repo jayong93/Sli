@@ -109,6 +109,13 @@ int ConnectToServer() {
 	}
 	close(fd);
 
+	printf("open %s\n", outPipeName);
+	if ((channelSnd = open(outPipeName, O_WRONLY)) < 0) {
+		perror("failed to open output channel");
+		close(channelRcv);
+		return -1;
+	}
+
 	printf("open %s\n", inPipeName);
 	if ((channelRcv = open(inPipeName, O_RDONLY)) < 0) {
 		perror("failed to open input channel");
@@ -124,12 +131,6 @@ int ConnectToServer() {
 	}
 	printf("Signal Received\n");
 
-	printf("open %s\n", outPipeName);
-	if ((channelSnd = open(outPipeName, O_RDWR)) < 0) {
-		perror("failed to open output channel");
-		close(channelRcv);
-		return -1;
-	}
 	printf("After init\n");
 #endif
 	return 0;
@@ -139,8 +140,6 @@ void RecvFromPipe(VBuffer* buf, size_t nRead) {
 	if (nRead == 0) return;
 
 	int ret;
-	mvwprintw(mainWin, 8, 10, "in RecvPipe");
-	wrefresh(mainWin);
 	VBAppend(buf, NULL, nRead);
 	// 파이프가 닫혔을 때 종료
 	if ((ret = read(channelRcv, buf->ptr, nRead)) < 0) {
@@ -154,8 +153,6 @@ void RecvFromPipe(VBuffer* buf, size_t nRead) {
 		exit(6);
 	}
 	
-	mvwprintw(mainWin, 8, 10, "after RecvPipe");
-	wrefresh(mainWin);
 	buf->len = ret;
 }
 
@@ -184,22 +181,14 @@ void RecvFromServer(VBuffer* buf, size_t nRead) {
 void* RecvMsg() {
 	renderData = VBCreate(50);
 	msgBuf = VBCreate(100);
-	pthread_mutex_lock(&rDataLock);
-	pthread_cond_wait(&dataCopyCond, &rDataLock);
-	pthread_mutex_unlock(&rDataLock);
-	// -1의 message가 왔을 때 종료 처리
+
 	while(1) {
 		pthread_mutex_lock(&rDataLock);
-		// score
-		mvwaddstr(mainWin, 1, 2, "try to read");
-		wrefresh(mainWin);
 		RecvFromServer(&msgBuf, sizeof(int));
 #ifndef USE_FIFO
 		if (*(unsigned int*)(msgBuf.ptr) < 0) {endwin(); fprintf(stderr, "bad data\n"); exit(5);}
 #endif
 		size_t dataLen = (size_t)(*(unsigned int*)(msgBuf.ptr));
-		mvwprintw(mainWin, 4, 2, "%d, %d", dataLen, rand());
-		wrefresh(mainWin);
 		RecvFromServer(&renderData, dataLen);
 		pthread_cond_signal(&dataCopyCond);
 		pthread_mutex_unlock(&rDataLock);
@@ -212,7 +201,7 @@ void* SendMsg() {
 	int isBoost = FALSE;
 	while(1) {
 		if (mainWin) {
-			int input = wgetch(mainWin);
+			int input = getch();
 			char ch;
 			switch (input) {
 				case KEY_LEFT:

@@ -76,7 +76,11 @@ void* Render() {
 	int nColor;
 	setlocale(LC_CTYPE, "ko_KR.utf-8");
 
-	pthread_mutex_lock(&rDataLock);
+	while(1){
+		pthread_mutex_lock(&rDataLock);
+		pthread_cond_wait(&dataCopyCond, &rDataLock);
+		pthread_mutex_unlock(&rDataLock);
+	}
 	initscr();
 	if (has_colors())
 	{
@@ -108,24 +112,20 @@ void* Render() {
 	noecho();
 	keypad(mainWin, TRUE);
 
-	box(mainWin, 0, 0);
+	box(mainWin, '|', '-');
 	wrefresh(mainWin);
-	
-	pthread_cond_signal(&dataCopyCond);
-	pthread_mutex_unlock(&rDataLock);
 
 	VBuffer localBuf = VBCreate(50);
 	VBuffer scores = VBCreate(80);
 	VBuffer ids = VBCreate(40);	// [#len|data(without null)]
 	while(1) {
+		/*
 		// 렌더링 데이터 복사
 		pthread_mutex_lock(&rDataLock);
 		pthread_cond_wait(&dataCopyCond, &rDataLock);
 		VBReplace(&localBuf, renderData.ptr, renderData.len);
 		pthread_mutex_unlock(&rDataLock);
 
-		mvwaddstr(mainWin, 10, 5, "In Render");
-		wrefresh(mainWin);
 		char* pData = localBuf.ptr;
 		int nPlayer = *(int*)MovePointer(&pData, sizeof(int));
 		char* pRender = pData;
@@ -208,7 +208,8 @@ void* Render() {
 		qsort(scores.ptr, scores.len/(sizeof(int)*2), sizeof(int)*2, ScoreCmp);
 		DrawRankingBar(mainWin, (const int*)scores.ptr, (const size_t*)ids.ptr, nPlayer);
 
-		wrefresh(mainWin);
+		//wrefresh(mainWin);
+		*/
 	}
 
 	VBDestroy(&scores);
