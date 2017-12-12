@@ -106,15 +106,15 @@
 /*
  * Definition used to make WINDOW and similar structs opaque.
  */
-#ifndef NCURSES_OPAQUE
-#define NCURSES_OPAQUE 0
+#ifndef NCURSES_INTERNALS
+#define NCURSES_OPAQUE 1
 #endif
 
 /*
  * The reentrant code relies on the opaque setting, but adds features.
  */
 #ifndef NCURSES_REENTRANT
-#define NCURSES_REENTRANT 0
+#define NCURSES_REENTRANT 1
 #endif
 
 /*
@@ -127,7 +127,7 @@
  * The internal type used for window dimensions.
  */
 #undef	NCURSES_SIZE_T
-#define	NCURSES_SIZE_T short
+#define	NCURSES_SIZE_T int
 
 /*
  * Control whether tparm() supports varargs or fixed-parameter list.

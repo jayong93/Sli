@@ -64,7 +64,7 @@ extern "C" {
 #define NCURSES_USE_DATABASE 1
 
 #undef  NCURSES_USE_TERMCAP
-#define NCURSES_USE_TERMCAP 0
+#define NCURSES_USE_TERMCAP 1
 
 #undef  NCURSES_XNAMES
 #define NCURSES_XNAMES 1
@@ -676,16 +676,16 @@ typedef struct term {		/* describe an actual terminal */
     char *      _termname;      /* used for termname() */
 } TERMINAL;
 
-#if 0 && !0
+#if 0 && !1
 extern NCURSES_EXPORT_VAR(TERMINAL *) cur_term;
-#elif 0
+#elif 1
 NCURSES_WRAPPED_VAR(TERMINAL *, cur_term);
 #define cur_term   NCURSES_PUBLIC_VAR(cur_term())
 #else
 extern NCURSES_EXPORT_VAR(TERMINAL *) cur_term;
 #endif
 
-#if 0 || 0
+#if 0 || 1
 NCURSES_WRAPPED_VAR(NCURSES_CONST char * const *, boolnames);
 NCURSES_WRAPPED_VAR(NCURSES_CONST char * const *, boolcodes);
 NCURSES_WRAPPED_VAR(NCURSES_CONST char * const *, boolfnames);
