@@ -29,6 +29,7 @@
 
 # Executables
 Sli
+Sli_Server
 *.exe
 *.out
 *.app
