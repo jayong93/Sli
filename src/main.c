@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
-#include <ncursesw/curses.h>
+#include <ncurses.h>
 #include "Render.h"
 #include "ClientCommu.h"
 
