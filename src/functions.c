@@ -695,17 +695,21 @@ void init_client(CLIENT* new_client, pid_t pid, unsigned int len, char* id_buf, 
 
     // open fifo
 	printf("oepn %s\n", read_fifo);
-    if((new_client->read_fd = open(read_fifo, O_RDONLY| O_NONBLOCK)) < 0){
+    if((new_client->read_fd = open(read_fifo, O_RDONLY)) < 0){
         printf("open read fifo error"); exit(1);
     }
 	printf("open read fifo %d\n", new_client->read_fd);
 	printf("oepn %s\n", write_fifo);
-    if((new_client->fd = open(write_fifo, O_WRONLY|O_NONBLOCK)) < 0){
+    if((new_client->fd = open(write_fifo, O_WRONLY)) < 0){
         printf("open write fifo error"); exit(1);
     }
 	printf("open write fifo %d\n", new_client->fd);
 
-	sleep(2);
+	int flag;
+	flag = fcntl(new_client->read_fd, F_GETFL, 0);
+	fcntl(new_client->read_fd, F_SETFL, flag | O_NONBLOCK);
+	flag = fcntl(new_client->fd, F_GETFL, 0);
+	fcntl(new_client->fd, F_SETFL, flag | O_NONBLOCK);
 }
 
 int is_position_OK(CLIENT* head_client, AABB aabb){

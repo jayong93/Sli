@@ -11,6 +11,7 @@ pthread_cond_t dataCopyCond;
 const char* myID;
 
 int main(int argc, char* argv[]){
+/**/
 	if (argc < 2) {
 		fprintf(stderr, "not enough arguments\n");
 		return 1;
@@ -49,4 +50,18 @@ int main(int argc, char* argv[]){
 	pthread_mutex_destroy(&rDataLock);
 	pthread_cond_destroy(&dataCopyCond);
 	exit(0);
+/**/
+/*
+	initscr();
+	cbreak();
+	curs_set(0);
+	WINDOW* mainWin;
+	mainWin = newwin(WINDOW_HEIGHT, WINDOW_WIDTH, 0, 0);
+	noecho();
+	keypad(mainWin, TRUE);
+	box(mainWin, 0, 0);
+	wrefresh(mainWin);
+	wgetch(mainWin);
+	endwin();
+*/
 }
