@@ -44,10 +44,9 @@ int main(int argc, char* argv[]){
 		return 4;
 	}
 
+	RecvMsg();
 
 	pthread_mutex_destroy(&rDataLock);
 	pthread_cond_destroy(&dataCopyCond);
-
-	RecvMsg();
 	exit(0);
 }

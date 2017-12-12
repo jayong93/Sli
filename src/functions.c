@@ -27,6 +27,7 @@ void create_star(time_t* last_time, POINT** head_star, int* n_stars){
 
 void delete_client(CLIENT* del_client, CLIENT** p_head_client, POINT** p_head_star, int* p_nclients, int* p_nstars){
     // client 리스트에서 del_client 제거
+	printf("del client");
     del_client->prev_client->next_client = del_client->next_client;
     del_client->next_client->prev_client = del_client->prev_client;
     if(del_client == (*p_head_client)){
@@ -84,10 +85,10 @@ void add_head_point(POINT** head_point, POINT* new_point){
     }
     else{
         new_point->next_point = (*head_point);
-        (*head_point)->prev_point = new_point;
-
         new_point->prev_point = (*head_point)->prev_point;
+
         (*head_point)->prev_point->next_point = new_point;
+        (*head_point)->prev_point = new_point;
     }
     (*head_point) = new_point;
 }
@@ -159,6 +160,7 @@ void move(CLIENT* client){
 }
 
 void move_head(int speed, CLIENT* client){
+	printf("in move_head\n");
     int x_dir = 0;
     int y_dir = 0;
     char dir = client->input.dir;
@@ -454,6 +456,7 @@ void send_data2clients(unsigned int data_size, VECTOR* p_vector, CLIENT* head_cl
 
 
 void send_data2client(unsigned int data_size, VECTOR* p_vector, CLIENT* client){
+	printf("dsize %d\n", data_size);
     if(write(client->fd, &data_size, sizeof(unsigned int)) == -1) {
         printf("message write failed"); exit(1);
         }
@@ -578,10 +581,10 @@ int register_client(CLIENT** p_head_client, int* p_nclients, pid_t pid, unsigned
     }
     else{
         new_client->next_client = (*p_head_client);
-        (*p_head_client)->prev_client = new_client;
-
         new_client->prev_client = (*p_head_client)->prev_client;
+
         (*p_head_client)->prev_client->next_client = new_client;
+        (*p_head_client)->prev_client = new_client;
     }
     (*p_head_client) = new_client;
 
@@ -677,11 +680,11 @@ void init_client(CLIENT* new_client, pid_t pid, unsigned int len, char* id_buf, 
     memcpy(new_client->write_fifo, write_fifo, len + 3 + 1);
     
     // make fifo
-    if(mkfifo(read_fifo, 0666) == -1){
-        if(errno != EEXIST){
-            printf("fifo error"); exit(1);
-        }
-    }
+    //if(mkfifo(read_fifo, 0666) == -1){
+        //if(errno != EEXIST){
+            //printf("make fifo error"); exit(1);
+        //}
+    //}
 	/*
     if(mkfifo(write_fifo, 0666) == -1){
         if(errno != EEXIST){
@@ -691,12 +694,18 @@ void init_client(CLIENT* new_client, pid_t pid, unsigned int len, char* id_buf, 
 	*/
 
     // open fifo
-    if((new_client->read_fd = open(read_fifo, O_RDONLY| O_NONBLOCK) < 0)){
-        printf("fifo error"); exit(1);
+	printf("oepn %s\n", read_fifo);
+    if((new_client->read_fd = open(read_fifo, O_RDONLY| O_NONBLOCK)) < 0){
+        printf("open read fifo error"); exit(1);
     }
-    if((new_client->fd = open(write_fifo, O_WRONLY|O_NONBLOCK) < 0)){
-        printf("fifo error"); exit(1);
+	printf("open read fifo %d\n", new_client->read_fd);
+	printf("oepn %s\n", write_fifo);
+    if((new_client->fd = open(write_fifo, O_WRONLY|O_NONBLOCK)) < 0){
+        printf("open write fifo error"); exit(1);
     }
+	printf("open write fifo %d\n", new_client->fd);
+
+	sleep(2);
 }
 
 int is_position_OK(CLIENT* head_client, AABB aabb){

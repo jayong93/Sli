@@ -14,7 +14,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <ncursesw/curses.h>
+#include <ncurses.h>
 #include "ClientCommu.h"
 #include "Util.h"
 
@@ -34,10 +34,11 @@ void SigUserHandler(int signo) {
 }
 
 int ConnectToServer() {
-	struct sigaction act;
-	act.sa_handler = SigUserHandler;
-	sigfillset(&(act.sa_mask));
-	sigaction(SIGUSR1, &act, NULL);
+	//struct sigaction act;
+	//act.sa_handler = SigUserHandler;
+	//sigfillset(&(act.sa_mask));
+	//sigaction(SIGUSR1, &act, NULL);
+	signal(SIGUSR1, SigUserHandler);
 
 	pid = getpid();
 	unsigned int nameLen = strlen(myID);
@@ -88,6 +89,14 @@ int ConnectToServer() {
 		perror("Failed to make In FIFO");
 		return -1;
 	}
+	if (mkfifo(outPipeName, 0666) < 0) {
+		perror("Failed to make In FIFO");
+		return -1;
+	}
+
+	sigset_t blockSet;
+	sigfillset(&blockSet);
+	sigprocmask(SIG_SETMASK, &blockSet, NULL);
 
 	char id_buf[sizeof(pid)+sizeof(nameLen)+10];
 	memcpy(id_buf, &pid, sizeof(pid));
@@ -100,23 +109,28 @@ int ConnectToServer() {
 	}
 	//close(fd);
 
+	printf("open %s\n", inPipeName);
 	if ((channelRcv = open(inPipeName, O_RDONLY)) < 0) {
 		perror("failed to open input channel");
 		return -1;
 	}
 
+	sigprocmask(SIG_UNBLOCK, &blockSet, NULL);
+
 	printf("Waiting Signal\n");
-	while(!isConnected) {
+	while(isConnected == 0) {
 		pause();
 		printf("Some Signal Received\n");
 	}
 	printf("Signal Received\n");
 
-	if ((channelSnd = open(outPipeName, O_WRONLY)) < 0) {
+	printf("open %s\n", outPipeName);
+	if ((channelSnd = open(outPipeName, O_RDWR)) < 0) {
 		perror("failed to open output channel");
 		close(channelRcv);
 		return -1;
 	}
+	printf("After init\n");
 #endif
 	return 0;
 }
@@ -125,11 +139,23 @@ void RecvFromPipe(VBuffer* buf, size_t nRead) {
 	if (nRead == 0) return;
 
 	int ret;
+	mvwprintw(mainWin, 8, 10, "in RecvPipe");
+	wrefresh(mainWin);
 	VBAppend(buf, NULL, nRead);
 	// 파이프가 닫혔을 때 종료
-	if (ret = read(channelRcv, buf->ptr, nRead) == 0)
+	if ((ret = read(channelRcv, buf->ptr, nRead)) < 0) {
+		endwin();
+		perror("Fail to read from pipe");
 		exit(5);
+	}
+	else if (ret == 0) {
+		endwin();
+		fprintf(stderr, "pipe is closed\n");
+		exit(6);
+	}
 	
+	mvwprintw(mainWin, 8, 10, "after RecvPipe");
+	wrefresh(mainWin);
 	buf->len = ret;
 }
 
@@ -139,8 +165,11 @@ void RecvFromMsgQueue(VBuffer* buf, size_t nRead) {
 	int ret;
 	VBClear(&msgBuf);
 	VBAppend(&msgBuf, NULL, sizeof(long)+nRead);
-	if (ret = msgrcv(channelRcv, msgBuf.ptr, nRead, pid, 0) < 0)
+	if (ret = msgrcv(channelRcv, msgBuf.ptr, nRead, pid, 0) < 0) {
+		endwin();
+		perror("Fail to read from MsgQueue");
 		exit(5);
+	}
 	VBReplace(buf, msgBuf.ptr+sizeof(long), ret);
 }
 
@@ -155,16 +184,22 @@ void RecvFromServer(VBuffer* buf, size_t nRead) {
 void* RecvMsg() {
 	renderData = VBCreate(50);
 	msgBuf = VBCreate(100);
-
+	pthread_mutex_lock(&rDataLock);
+	pthread_cond_wait(&dataCopyCond, &rDataLock);
+	pthread_mutex_unlock(&rDataLock);
 	// -1의 message가 왔을 때 종료 처리
 	while(1) {
 		pthread_mutex_lock(&rDataLock);
 		// score
+		mvwaddstr(mainWin, 1, 2, "try to read");
+		wrefresh(mainWin);
 		RecvFromServer(&msgBuf, sizeof(int));
 #ifndef USE_FIFO
-		if (*(int*)(msgBuf.ptr) < 0) exit(5);
+		if (*(unsigned int*)(msgBuf.ptr) < 0) {endwin(); fprintf(stderr, "bad data\n"); exit(5);}
 #endif
-		size_t dataLen = (size_t)(*(int*)(msgBuf.ptr));
+		size_t dataLen = (size_t)(*(unsigned int*)(msgBuf.ptr));
+		mvwprintw(mainWin, 4, 2, "%d, %d", dataLen, rand());
+		wrefresh(mainWin);
 		RecvFromServer(&renderData, dataLen);
 		pthread_cond_signal(&dataCopyCond);
 		pthread_mutex_unlock(&rDataLock);

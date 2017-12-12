@@ -76,6 +76,7 @@ void* Render() {
 	int nColor;
 	setlocale(LC_CTYPE, "ko_KR.utf-8");
 
+	pthread_mutex_lock(&rDataLock);
 	initscr();
 	if (has_colors())
 	{
@@ -108,6 +109,10 @@ void* Render() {
 	keypad(mainWin, TRUE);
 
 	box(mainWin, 0, 0);
+	wrefresh(mainWin);
+	
+	pthread_cond_signal(&dataCopyCond);
+	pthread_mutex_unlock(&rDataLock);
 
 	VBuffer localBuf = VBCreate(50);
 	VBuffer scores = VBCreate(80);
@@ -119,6 +124,8 @@ void* Render() {
 		VBReplace(&localBuf, renderData.ptr, renderData.len);
 		pthread_mutex_unlock(&rDataLock);
 
+		mvwaddstr(mainWin, 10, 5, "In Render");
+		wrefresh(mainWin);
 		char* pData = localBuf.ptr;
 		int nPlayer = *(int*)MovePointer(&pData, sizeof(int));
 		char* pRender = pData;
