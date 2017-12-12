@@ -81,6 +81,9 @@ void update(void* p){
     }
 }
 
+void sig_handle(int signo) {
+}
+
 void listen(void* p){
     char* fifo = "listen_fifo";
     int fd;
@@ -96,6 +99,8 @@ void listen(void* p){
         printf("fifo error"); exit(1);
     }
 
+	signal(SIGUSR1, sig_handle);
+
     // 메시지 받는다
     while(1){
         pid_t pid;
@@ -103,7 +108,10 @@ void listen(void* p){
         char id_buf[11];
 		int ret;
         if((ret = read(fd, &pid, sizeof(pid_t))) == 0) {
-			//printf("user out\n");
+			close(fd);
+			if((fd = open(fifo, O_RDONLY)) < 0){
+				printf("fifo error"); exit(1);
+			}
 			continue;
 		}
 		else if(ret < 0) {

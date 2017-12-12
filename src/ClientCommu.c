@@ -107,7 +107,7 @@ int ConnectToServer() {
 		close(fd);
 		return -1;
 	}
-	//close(fd);
+	close(fd);
 
 	printf("open %s\n", inPipeName);
 	if ((channelRcv = open(inPipeName, O_RDONLY)) < 0) {
