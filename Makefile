@@ -15,7 +15,7 @@ REL_TARGET = $(REL_DIR)/$(TARGET) $(REL_DIR)/$(SERV_TARGET)
 
 LIB_HEAD_DIR = $(SRC_DIR)/ncurses
 LIB_DIR = lib
-LIB_NAME = ncursestw_g pthread
+LIB_NAME = pthread
 
 CFLAGS += -MMD -MP -I$(LIB_HEAD_DIR)
 ifeq ($(PIPE), 1)
@@ -30,9 +30,11 @@ endif
 all : debug
 
 debug : CFLAGS += -g -O0 -DDEBUG
+debug : LIB_NAME += ncursestw_g
 debug : dbg_prep $(DBG_TARGET)
 
 release : CFLAGS += -O2 -DNDEBUG
+release : LIB_NAME += ncursestw
 release : rel_prep $(REL_TARGET)
 
 %/$(TARGET) : $(addprefix %/, $(CLIT_OBJS))
