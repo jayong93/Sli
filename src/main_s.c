@@ -101,16 +101,25 @@ void listen(void* p){
         pid_t pid;
         unsigned int len;
         char id_buf[11];
-        if(read(fd, &pid, sizeof(pid_t)) < 0){
-            printf("fifo read error"); exit(1);
-        }
+		int ret;
+        if((ret = read(fd, &pid, sizeof(pid_t))) == 0) {
+			//printf("user out\n");
+			continue;
+		}
+		else if(ret < 0) {
+            printf("fifo read pid error"); exit(1);
+		}
+
+		printf("read pid\n");
         if(read(fd, &len, sizeof(unsigned int)) < 0){
-            printf("fifo read error"); exit(1);
+            printf("fifo read id_len error"); exit(1);
         }
         if(read(fd, id_buf, len) < 0){
-            printf("fifo read error"); exit(1);
+            printf("fifo read id error"); exit(1);
         }
         id_buf[len] = 0;
+
+		sleep(1);
 
         // id 중복 확인 + 없으면 새로운 클라이언트 등록
         int id_exist = 0;
