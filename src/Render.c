@@ -18,6 +18,7 @@ extern pthread_mutex_t rDataLock;
 extern pthread_mutex_t inputLock;
 extern pthread_cond_t inputCond;
 WINDOW* mainWin = NULL;
+WINDOW* backWin = NULL;
 extern VBuffer renderData;
 extern int isUpdated;
 extern const char* myID;
@@ -34,6 +35,12 @@ int InitWindow(WINDOW* win, void* data) {
 	keypad(win, TRUE);
 	nodelay(win, TRUE);
 	return 0;
+}
+
+int CopyToMain(WINDOW* win, void* data) {
+	WINDOW* src = (WINDOW*)data;
+	overwrite(src, win);
+	wrefresh(win);
 }
 
 int RenderScreen(WINDOW* win, void* data) {
@@ -82,7 +89,7 @@ int RenderScreen(WINDOW* win, void* data) {
 		}
 	}
 
-	wclear(win);
+	werase(win);
 
 	// Draw screen edge
 	mvwaddch(win, 0, 0, '+');
@@ -141,8 +148,6 @@ int RenderScreen(WINDOW* win, void* data) {
 
 	qsort(scores->ptr, scores->len/(sizeof(int)*2), sizeof(int)*2, ScoreCmp);
 	DrawRankingBar(win, (const int*)scores->ptr, (const size_t*)ids->ptr, nPlayer);
-
-	wrefresh(win);
 	return 0;
 }
 
@@ -199,6 +204,7 @@ void* Render() {
 	pthread_mutex_lock(&inputLock);
 
 	initscr();
+	backWin = newwin(WINDOW_HEIGHT, WINDOW_WIDTH, 0, 0);
 	mainWin = newwin(WINDOW_HEIGHT, WINDOW_WIDTH, 0, 0);
 	cbreak();
 	noecho();
@@ -246,7 +252,8 @@ void* Render() {
 			isUpdated = 0;
 			pthread_mutex_unlock(&rDataLock);
 
-			use_window(mainWin, RenderScreen, renDatas);
+			RenderScreen(backWin, renDatas);
+			use_window(mainWin, CopyToMain, backWin);
 		}
 		else {
 			pthread_mutex_unlock(&rDataLock);
