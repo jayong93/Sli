@@ -34,7 +34,7 @@ int InitWindow(WINDOW* win, void* data) {
 }
 
 int RenderScreen(WINDOW* win, void* data) {
-	int nColor = **(int**)(data+1);
+	int nColor = **(int**)(data+sizeof(void*));
 	VBuffer* bufList = *(VBuffer**)(data);
 	VBuffer* localBuf = bufList;
 	VBuffer* scores = bufList+1;
