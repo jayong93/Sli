@@ -56,8 +56,8 @@ int RenderScreen(WINDOW* win, void* data) {
 	for (i=0; i<nPlayer; ++i) {
 		VBAppend(scores, &i, sizeof(int));
 		VBAppend(scores, (int*)MovePointer(&pData, sizeof(int)), sizeof(int));
-		MovePointer(&pData, sizeof(int));
-		int* idLen = (int*)MovePointer(&pData, sizeof(int));
+		MovePointer(&pData, sizeof(unsigned char));
+		unsigned int* idLen = (unsigned int*)MovePointer(&pData, sizeof(unsigned int));
 		VBAppend(ids, &idLen, sizeof(idLen));
 
 		size_t rCount = (*idLen > 10)?10:*idLen;
@@ -67,7 +67,7 @@ int RenderScreen(WINDOW* win, void* data) {
 			myIndex = i;
 		}
 
-		int nPoints = *(int*)MovePointer(&pData, sizeof(int));
+		unsigned int nPoints = *(unsigned int*)MovePointer(&pData, sizeof(unsigned int));
 		int j=0;
 		if (myIndex == i) {
 			camPos = *(Point*)MovePointer(&pData, sizeof(Point));
@@ -79,6 +79,11 @@ int RenderScreen(WINDOW* win, void* data) {
 		}
 	}
 
+	werase(win);
+
+	// Draw screen edge
+	box(win, '|', '-');
+
 	// Draw Status Bar
 	if (myIndex >= 0)
 		DrawStatusBar(win, camPos, scores->ptr[myIndex]);
@@ -87,12 +92,12 @@ int RenderScreen(WINDOW* win, void* data) {
 	Point p1, p2;
 	for (i=0; i<nPlayer; ++i) {
 		MovePointer(&pRender, sizeof(int));
-		int color = *(int*)MovePointer(&pRender, sizeof(int));
+		unsigned char color = *(unsigned char*)MovePointer(&pRender, sizeof(unsigned char));
 		color = color%nColor + 1;
-		int idLen = *(int*)MovePointer(&pRender, sizeof(int));
+		unsigned int idLen = *(unsigned int*)MovePointer(&pRender, sizeof(unsigned int));
 		char* id = (char*)MovePointer(&pRender, idLen);
 
-		int nPoints = *(int*)MovePointer(&pRender, sizeof(int));
+		unsigned int nPoints = *(unsigned int*)MovePointer(&pRender, sizeof(unsigned int));
 		p1 = *(Point*)MovePointer(&pRender, sizeof(Point));
 		TransformToScreen(camPos, &p1);
 		wattron(win, COLOR_PAIR(1));
@@ -115,6 +120,8 @@ int RenderScreen(WINDOW* win, void* data) {
 	for (i=0; i<nStar; ++i) {
 		star = *(Point*)MovePointer(&pRender, sizeof(Point));
 		TransformToScreen(camPos, &star);
+		if (star.y < 1 || star.y > WINDOW_HEIGHT-2) continue;
+		if (star.x < 1 || star.x > WINDOW_WIDTH-2) continue;
 		mvwaddch(win, star.y, star.x, STAR);
 	}
 
