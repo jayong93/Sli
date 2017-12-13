@@ -19,12 +19,14 @@
 #include "Util.h"
 
 extern pthread_mutex_t rDataLock;
-extern pthread_cond_t dataCopyCond;
+extern pthread_mutex_t inputLock;
+extern pthread_cond_t inputCond;
 extern WINDOW* mainWin;
 int isConnected = 0;
 int channelRcv = -1;
 int channelSnd = -1;
 VBuffer renderData;
+int isUpdated = 0;
 extern const char* myID;
 static pid_t pid;
 static VBuffer msgBuf;	// 메시지 큐를 통해 대용량 데이터를 받기 위한 가변 버퍼
@@ -190,18 +192,26 @@ void* RecvMsg() {
 		size_t dataLen = (size_t)(*(unsigned int*)(msgBuf.ptr));
 		pthread_mutex_lock(&rDataLock);
 		RecvFromServer(&renderData, dataLen);
-		pthread_cond_signal(&dataCopyCond);
+		isUpdated = 1;
 		pthread_mutex_unlock(&rDataLock);
 	}
 	VBDestroy(&renderData);
 	VBDestroy(&msgBuf);
 }
 
+int GetInput(WINDOW* win, void* data) {
+	return wgetch(win);
+}
+
 void* SendMsg() {
 	int isBoost = FALSE;
+	pthread_mutex_lock(&inputLock);
+	pthread_cond_wait(&inputCond, &inputLock);
+	pthread_mutex_unlock(&inputLock);
 	while(1) {
 		if (mainWin) {
-			int input = getch();
+			int input = use_window(mainWin, GetInput, NULL);
+			if(input == ERR) continue;
 			char ch;
 			switch (input) {
 				case KEY_LEFT:
@@ -229,7 +239,6 @@ void* SendMsg() {
 				exit(3);
 			}
 #else
-			// TODO: PIPE 통신 구현
 			if(write(channelSnd, &ch, sizeof(ch)) < 0) {
 				perror("Failed to send message");
 				exit(3);

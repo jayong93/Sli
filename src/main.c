@@ -7,7 +7,8 @@
 #include "ClientCommu.h"
 
 pthread_mutex_t rDataLock;
-pthread_cond_t dataCopyCond;
+pthread_mutex_t inputLock;
+pthread_cond_t inputCond;
 const char* myID;
 
 int main(int argc, char* argv[]){
@@ -27,20 +28,23 @@ int main(int argc, char* argv[]){
 	}
 
 	pthread_mutex_init(&rDataLock, NULL);
-	pthread_cond_init(&dataCopyCond, NULL);
+	pthread_mutex_init(&inputLock, NULL);
+	pthread_cond_init(&inputCond, NULL);
 
 	pthread_t threads[2];
 	int rc;
 
 	if (rc = pthread_create(&threads[0], NULL, SendMsg, NULL)) {
 		pthread_mutex_destroy(&rDataLock);
-		pthread_cond_destroy(&dataCopyCond);
+		pthread_mutex_destroy(&inputLock);
+		pthread_cond_destroy(&inputCond);
 		fprintf(stderr, "Failed to create pthread\n");
 		return 4;
 	}
 	if (rc = pthread_create(&threads[1], NULL, Render, NULL)) {
 		pthread_mutex_destroy(&rDataLock);
-		pthread_cond_destroy(&dataCopyCond);
+		pthread_mutex_destroy(&inputLock);
+		pthread_cond_destroy(&inputCond);
 		fprintf(stderr, "Failed to create pthread\n");
 		return 4;
 	}
@@ -48,7 +52,8 @@ int main(int argc, char* argv[]){
 	RecvMsg();
 
 	pthread_mutex_destroy(&rDataLock);
-	pthread_cond_destroy(&dataCopyCond);
+	pthread_mutex_destroy(&inputLock);
+	pthread_cond_destroy(&inputCond);
 	exit(0);
 /**/
 /*
