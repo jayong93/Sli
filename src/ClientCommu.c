@@ -183,12 +183,12 @@ void* RecvMsg() {
 	msgBuf = VBCreate(100);
 
 	while(1) {
-		pthread_mutex_lock(&rDataLock);
 		RecvFromServer(&msgBuf, sizeof(int));
 #ifndef USE_FIFO
 		if (*(unsigned int*)(msgBuf.ptr) < 0) {endwin(); fprintf(stderr, "bad data\n"); exit(5);}
 #endif
 		size_t dataLen = (size_t)(*(unsigned int*)(msgBuf.ptr));
+		pthread_mutex_lock(&rDataLock);
 		RecvFromServer(&renderData, dataLen);
 		pthread_cond_signal(&dataCopyCond);
 		pthread_mutex_unlock(&rDataLock);
