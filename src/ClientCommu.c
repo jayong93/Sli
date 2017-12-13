@@ -228,6 +228,7 @@ void* SendMsg() {
 					break;
 				case ' ':
 					ch = isBoost?'x':'o';
+					isBoost = !isBoost;
 					break;
 			}
 #ifndef USE_FIFO
