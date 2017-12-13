@@ -15,7 +15,7 @@ REL_TARGET = $(REL_DIR)/$(TARGET) $(REL_DIR)/$(SERV_TARGET)
 
 LIB_HEAD_DIR = $(SRC_DIR)/ncurses
 LIB_DIR = lib
-LIB_NAME = pthread
+LIB_NAME = pthread m
 
 CFLAGS += -MMD -MP -I$(LIB_HEAD_DIR)
 ifeq ($(PIPE), 1)

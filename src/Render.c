@@ -2,9 +2,11 @@
 
 #include <stdlib.h>
 #include <malloc.h>
+#include <math.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <string.h>
+#include <sched.h>
 #include <locale.h>
 #include "Render.h"
 #include "Util.h"
@@ -13,9 +15,11 @@
 #define STAR '*'
 
 extern pthread_mutex_t rDataLock;
-extern pthread_cond_t dataCopyCond;
+extern pthread_mutex_t inputLock;
+extern pthread_cond_t inputCond;
 WINDOW* mainWin = NULL;
 extern VBuffer renderData;
+extern int isUpdated;
 extern const char* myID;
 
 int ScoreCmp(const void* a, const void* b) {
@@ -28,6 +32,7 @@ int ScoreCmp(const void* a, const void* b) {
 
 int InitWindow(WINDOW* win, void* data) {
 	keypad(win, TRUE);
+	nodelay(win, TRUE);
 	return 0;
 }
 
@@ -77,7 +82,7 @@ int RenderScreen(WINDOW* win, void* data) {
 		}
 	}
 
-	werase(win);
+	wclear(win);
 
 	// Draw screen edge
 	mvwaddch(win, 0, 0, '+');
@@ -88,7 +93,6 @@ int RenderScreen(WINDOW* win, void* data) {
 	mvwhline(win, WINDOW_HEIGHT-1, 1, '-', WINDOW_WIDTH-2);
 	mvwvline(win, 1, 0, '|', WINDOW_HEIGHT-2);
 	mvwvline(win, 1, WINDOW_WIDTH-1, '|', WINDOW_HEIGHT-2);
-	//box(win, '|', '-');
 
 	// Draw Status Bar
 	if (myIndex >= 0)
@@ -106,10 +110,9 @@ int RenderScreen(WINDOW* win, void* data) {
 		unsigned int nPoints = *(unsigned int*)MovePointer(&pRender, sizeof(unsigned int));
 		p1 = *(Point*)MovePointer(&pRender, sizeof(Point));
 		TransformToScreen(camPos, &p1);
-		wattron(win, COLOR_PAIR(1));
-		mvwaddch(win, p1.y, p1.x, BODY);
-		wattroff(win, COLOR_PAIR(1));
+		Point head = p1;
 
+		// Draw body
 		wattron(win, COLOR_PAIR(color));
 		int j;
 		for (j=1; j<nPoints; ++j) {
@@ -119,8 +122,13 @@ int RenderScreen(WINDOW* win, void* data) {
 			p1 = p2;
 		}
 		wattroff(win, COLOR_PAIR(color));
+		// Draw head
+		wattron(win, COLOR_PAIR(1));
+		mvwaddch(win, head.y, head.x, BODY);
+		wattroff(win, COLOR_PAIR(1));
 	}
 
+	// Draw stars
 	int nStar = *(int*)MovePointer(&pRender, sizeof(int));
 	Point star;
 	for (i=0; i<nStar; ++i) {
@@ -139,8 +147,8 @@ int RenderScreen(WINDOW* win, void* data) {
 }
 
 void TransformToScreen(Point base, Point* target) {
-	target->x = (target->x - base.x)/10 + ((WINDOW_WIDTH-2)/2) + 1;
-	target->y = (target->y - base.y)/10 + ((WINDOW_HEIGHT-2)/2) + 1;
+	target->x = (int)floor((target->x - base.x)/10. + 0.5) + ((WINDOW_WIDTH-2)/2) + 1;
+	target->y = (WINDOW_HEIGHT-1) - ((int)floor((target->y - base.y)/10. + 0.5) + ((WINDOW_HEIGHT-2)/2) + 1);
 }
 
 void DrawLine(WINDOW* win, Point start, Point end) {
@@ -188,6 +196,8 @@ void* Render() {
 	int nColor;
 	setlocale(LC_ALL, "");
 
+	pthread_mutex_lock(&inputLock);
+
 	initscr();
 	mainWin = newwin(WINDOW_HEIGHT, WINDOW_WIDTH, 0, 0);
 	cbreak();
@@ -219,6 +229,9 @@ void* Render() {
 	}
 
 	use_window(mainWin, InitWindow, NULL);
+	
+	pthread_cond_signal(&inputCond);
+	pthread_mutex_unlock(&inputLock);
 
 	VBuffer buf[3];
 	buf[0] = VBCreate(50);
@@ -228,11 +241,17 @@ void* Render() {
 	while(1) {
 		// 렌더링 데이터 복사
 		pthread_mutex_lock(&rDataLock);
-		pthread_cond_wait(&dataCopyCond, &rDataLock);
-		VBReplace(buf, renderData.ptr, renderData.len);
-		pthread_mutex_unlock(&rDataLock);
+		if (isUpdated) {
+			VBReplace(buf, renderData.ptr, renderData.len);
+			isUpdated = 0;
+			pthread_mutex_unlock(&rDataLock);
 
-		use_window(mainWin, RenderScreen, renDatas);
+			use_window(mainWin, RenderScreen, renDatas);
+		}
+		else {
+			pthread_mutex_unlock(&rDataLock);
+			sched_yield();
+		}
 	}
 
 	VBDestroy(buf);
