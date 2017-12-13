@@ -28,8 +28,6 @@ int ScoreCmp(const void* a, const void* b) {
 
 int InitWindow(WINDOW* win, void* data) {
 	keypad(win, TRUE);
-	box(win, '|', '-');
-	wrefresh(win);
 	return 0;
 }
 
@@ -82,7 +80,15 @@ int RenderScreen(WINDOW* win, void* data) {
 	werase(win);
 
 	// Draw screen edge
-	box(win, '|', '-');
+	mvwaddch(win, 0, 0, '+');
+	mvwaddch(win, 0, WINDOW_WIDTH-1, '+');
+	mvwaddch(win, WINDOW_HEIGHT-1, WINDOW_WIDTH-1, '+');
+	mvwaddch(win, WINDOW_HEIGHT-1, 0, '+');
+	mvwhline(win, 0, 1, '-', WINDOW_WIDTH-2);
+	mvwhline(win, WINDOW_HEIGHT-1, 1, '-', WINDOW_WIDTH-2);
+	mvwvline(win, 1, 0, '|', WINDOW_HEIGHT-2);
+	mvwvline(win, 1, WINDOW_WIDTH-1, '|', WINDOW_HEIGHT-2);
+	//box(win, '|', '-');
 
 	// Draw Status Bar
 	if (myIndex >= 0)
@@ -180,7 +186,7 @@ void DrawRankingBar(WINDOW* win, const int* idxList, const size_t* idList, int p
 
 void* Render() {
 	int nColor;
-	setlocale(LC_CTYPE, "ko_KR.utf-8");
+	setlocale(LC_ALL, "");
 
 	initscr();
 	mainWin = newwin(WINDOW_HEIGHT, WINDOW_WIDTH, 0, 0);
