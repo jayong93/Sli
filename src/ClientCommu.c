@@ -231,6 +231,11 @@ void* SendMsg() {
 					ch = isBoost?'x':'o';
 					isBoost = !isBoost;
 					break;
+				case 'z':
+					pthread_mutex_lock(&inputLock);
+					isNameEnabled = !isNameEnabled;
+					pthread_mutex_unlock(&inputLock);
+					break;
 			}
 #ifndef USE_FIFO
 			MsgEntry msg;

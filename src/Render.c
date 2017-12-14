@@ -50,6 +50,7 @@ int RenderScreen(WINDOW* win, void* data) {
 	VBuffer* localBuf = bufList;
 	VBuffer* scores = bufList+1;
 	VBuffer* ids = bufList+2;
+	VBuffer* heads = bufList+3;
 	char* pData = localBuf->ptr;
 	int nPlayer = *(int*)MovePointer(&pData, sizeof(int));
 	char* pRender = pData;
@@ -60,6 +61,7 @@ int RenderScreen(WINDOW* win, void* data) {
 
 	VBClear(scores);
 	VBClear(ids);
+	VBClear(heads);
 
 	int i;
 
@@ -79,12 +81,13 @@ int RenderScreen(WINDOW* win, void* data) {
 		}
 
 		unsigned int nPoints = *(unsigned int*)MovePointer(&pData, sizeof(unsigned int));
-		int j=0;
+		Point head = *(Point*)MovePointer(&pData, sizeof(Point));
+		VBAppend(heads, &head, sizeof(Point));
 		if (myIndex == i) {
-			camPos = *(Point*)MovePointer(&pData, sizeof(Point));
-			j++;
+			camPos = head;
 		}
 
+		int j=1;
 		for(; j<nPoints; ++j) {
 			MovePointer(&pData, sizeof(Point));
 		}
@@ -98,6 +101,29 @@ int RenderScreen(WINDOW* win, void* data) {
 	// Draw Status Bar
 	if (myIndex >= 0)
 		DrawStatusBar(win, camPos, scores->ptr[myIndex]);
+
+	// Draw Name
+	pthread_mutex_lock(&inputLock);
+	if (isNameEnabled) {
+		pthread_mutex_unlock(&inputLock);
+		for (i=0; i<nPlayer; ++i) {
+			Point headPos = ((Point*)heads->ptr)[i];
+			TransformToScreen(camPos, &headPos);
+			if (--headPos.y < 1) continue;
+			unsigned int* pIdLen = ((unsigned int**)ids->ptr)[i];
+			unsigned int len = *pIdLen++;
+			char* id = (char*)pIdLen;
+			int j, offset;
+			for (j=0, offset=-(len/2); j<len; ++j, ++offset) {
+				if (headPos.x + offset < 1 || headPos.x + offset > WINDOW_WIDTH - 2) continue;
+				wattron(win, COLOR_PAIR(nColor+1));
+				mvwaddch(win, headPos.y, headPos.x + offset, id[j]);
+				wattroff(win, COLOR_PAIR(nColor+1));
+			}
+		}
+	}
+	else
+		pthread_mutex_unlock(&inputLock);
 
 	// Draw players
 	Point p1, p2;
@@ -128,13 +154,6 @@ int RenderScreen(WINDOW* win, void* data) {
 		mvwaddch(win, head.y, head.x, BODY);
 		wattroff(win, COLOR_PAIR(1));
 	}
-
-	// Draw Name
-	pthread_mutex_lock(&inputLock);
-	if (isNameEnabled) {
-		
-	}
-	pthread_mutex_unlock(&inputLock);
 
 	// Draw stars
 	int nStar = *(int*)MovePointer(&pRender, sizeof(int));
@@ -214,13 +233,14 @@ void* Render() {
 	if (has_colors())
 	{
 		start_color();
-		int ignore[] = {0, 16, 8};
-		// COLOR_PAIR 번호는 1~64
+		int ignore[] = {0, 8, 9, 16, 8};
+		int lenIgn = sizeof(ignore)/sizeof(*ignore);
+		// COLOR_PAIR 번호는 COLOR_PAIRS 변수에 의존적
 		int i, j;
-		nColor = (COLOR_PAIRS<227)?COLOR_PAIRS:227;
+		nColor = (COLOR_PAIRS-2<231-lenIgn-2)?COLOR_PAIRS-2:231-lenIgn-2;
 		for (i=0, j=0; i<nColor; ++i, ++j) {
 			int t;
-			for (t=0; t < (sizeof(ignore)/sizeof(*ignore)); ++t) {
+			for (t=0; t < lenIgn; ++t) {
 				if (ignore[t] == j) {
 					++j;
 					t = -1;
@@ -228,6 +248,8 @@ void* Render() {
 			}
 			init_pair(i+1, j, COLOR_BLACK);
 		}
+		// 검은 바탕 회색 글씨는 특수용으로 지정
+		init_pair(nColor+1, 8, COLOR_BLACK);
 	}
 	else {
 		endwin();
@@ -240,10 +262,11 @@ void* Render() {
 	pthread_cond_signal(&inputCond);
 	pthread_mutex_unlock(&inputLock);
 
-	VBuffer buf[3];
+	VBuffer buf[4];
 	buf[0] = VBCreate(50);
 	buf[1] = VBCreate(80);
 	buf[2] = VBCreate(40);	// [#len|data(without null)]
+	buf[3] = VBCreate(80);
 	void* renDatas[2] = {buf, &nColor};
 	while(1) {
 		// 렌더링 데이터 복사
@@ -265,5 +288,6 @@ void* Render() {
 	VBDestroy(buf);
 	VBDestroy(buf+1);
 	VBDestroy(buf+2);
+	VBDestroy(buf+3);
 	endwin();
 }
