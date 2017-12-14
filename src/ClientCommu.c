@@ -27,6 +27,7 @@ int channelRcv = -1;
 int channelSnd = -1;
 VBuffer renderData;
 int isUpdated = 0;
+int isNameEnabled = 0;
 extern const char* myID;
 static pid_t pid;
 static VBuffer msgBuf;	// 메시지 큐를 통해 대용량 데이터를 받기 위한 가변 버퍼
