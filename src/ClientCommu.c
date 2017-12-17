@@ -105,9 +105,26 @@ int ConnectToServer() {
 	memcpy(id_buf, &pid, sizeof(pid));
 	memcpy(id_buf+sizeof(pid), &nameLen, sizeof(nameLen));
 	memcpy(id_buf+sizeof(pid)+sizeof(nameLen), myID, nameLen);
-	if (write(fd, id_buf, sizeof(pid)+sizeof(nameLen)+nameLen) < 0) {
+	
+	int dataLen = sizeof(pid)+sizeof(nameLen)+nameLen;
+	struct flock lockType;
+	lockType.l_type = F_WRLCK;
+	lockType.l_whence = SEEK_END;
+	lockType.l_start = 0;
+	lockType.l_len = dataLen;
+
+	if (fcntl(fd, F_SETLKW, &lockType) < 0) {
+		perror("Failed to file locking");
+		return -1;
+	}
+	if (write(fd, id_buf, dataLen) < 0) {
 		perror("Writing failed");
 		close(fd);
+		return -1;
+	}
+	lockType.l_type = F_UNLCK;
+	if (fcntl(fd, F_SETLK, &lockType) < 0) {
+		perror("Failed to file unlocking");
 		return -1;
 	}
 	close(fd);
