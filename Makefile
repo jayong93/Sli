@@ -1,7 +1,7 @@
 CC = gcc
 SRC_DIR = src
 CLIT_SRCS = main.c ClientCommu.c Render.c Util.c
-SERV_SRCS = main_s.c functions.c
+SERV_SRCS = main_s.c functions.c listen.c update.c
 SERV_OBJS = $(SERV_SRCS:%.c=%.o)
 CLIT_OBJS = $(CLIT_SRCS:%.c=%.o)
 TARGET = Sli
