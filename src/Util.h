@@ -1,3 +1,6 @@
+#ifndef UTIL_H
+#define UTIL_H
+
 void* MovePointer(char** ptr, int offset);
 void* MovePointerStep(char** ptr, int step, int offset);
 
@@ -12,3 +15,5 @@ int VBAppend(VBuffer* buf, void* source, size_t size);
 int VBReplace(VBuffer* buf, void* source, size_t size);
 void VBDestroy(VBuffer* buf);
 int VBClear(VBuffer* buf);
+
+#endif

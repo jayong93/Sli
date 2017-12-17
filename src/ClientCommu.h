@@ -1,3 +1,5 @@
+#ifndef CLIENTCOMMU_H
+#define CLIENTCOMMU_H
 #define BUF_SIZE 100
 
 typedef struct MsgEntry_ {
@@ -10,3 +12,5 @@ void* RecvMsg();
 void* SendMsg();
 
 int ConnectToServer();
+
+#endif
