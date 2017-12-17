@@ -52,6 +52,10 @@ int ConnectToServer() {
 		return -1;
 	}
 
+	sigset_t blockSet;
+	sigfillset(&blockSet);
+	sigprocmask(SIG_SETMASK, &blockSet, NULL);
+
 	MsgEntry enterMsg;
 	enterMsg.msgType = pid;
 	memcpy(enterMsg.msg, &nameLen, sizeof(nameLen));
@@ -60,6 +64,8 @@ int ConnectToServer() {
 		perror("Failed to send a message");
 		return -1;
 	}
+
+	sigprocmask(SIG_UNBLOCK, &blockSet, NULL);
 
 	printf("Waiting Signal\n");
 	do {
@@ -160,6 +166,7 @@ void RecvFromPipe(VBuffer* buf, size_t nRead) {
 	if (nRead == 0) return;
 
 	int ret;
+	VBClear(buf);
 	VBAppend(buf, NULL, nRead);
 	// 파이프가 닫혔을 때 종료
 	if ((ret = read(channelRcv, buf->ptr, nRead)) < 0) {
@@ -179,15 +186,20 @@ void RecvFromPipe(VBuffer* buf, size_t nRead) {
 void RecvFromMsgQueue(VBuffer* buf, size_t nRead) {
 	if (nRead == 0) return;
 
-	int ret;
-	VBClear(&msgBuf);
-	VBAppend(&msgBuf, NULL, sizeof(long)+nRead);
-	if (ret = msgrcv(channelRcv, msgBuf.ptr, nRead, pid, 0) < 0) {
-		endwin();
-		perror("Fail to read from MsgQueue");
-		exit(5);
-	}
-	VBReplace(buf, msgBuf.ptr+sizeof(long), ret);
+	int ret, received=0;
+	MsgEntry msg;
+
+	VBClear(buf);
+	VBAppend(buf, NULL, nRead);
+	do {
+		if ((ret = msgrcv(channelRcv, &msg, BUF_SIZE, pid, 0)) < 0) {
+			endwin();
+			perror("Fail to read from MsgQueue");
+			exit(5);
+		}
+		received += ret;
+		VBAppend(buf, msg.msg, ret);
+	} while(received < nRead);
 }
 
 void RecvFromServer(VBuffer* buf, size_t nRead) {
