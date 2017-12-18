@@ -1,7 +1,7 @@
 #define SERVER_FIFO_NAME "listen_fifo"
 #define IPC_KEY_CON 60170
-#define IPC_KEY_SND 60179
-#define IPC_KEY_RCV 60178
+#define IPC_KEY_SND 60174
+#define IPC_KEY_RCV 60179
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,11 +32,8 @@ extern const char* myID;
 static pid_t pid;
 static VBuffer msgBuf;	// 메시지 큐를 통해 대용량 데이터를 받기 위한 가변 버퍼
 
-void SigUserHandler(int signo) {
-	isConnected = 1;
-}
-
 void QuitWithMsg(int code) {
+	endwin();
 	MsgEntry msg;
 	msg.msgType = getpid();
 	msg.msg[0] = 'q';
@@ -44,12 +41,21 @@ void QuitWithMsg(int code) {
 	exit(code);
 }
 
+void SigUserHandler(int signo) {
+	isConnected = 1;
+}
+
+void SigIntHandler(int signo) {
+	QuitWithMsg(1);
+}
+
 int ConnectToServer() {
-	//struct sigaction act;
-	//act.sa_handler = SigUserHandler;
-	//sigfillset(&(act.sa_mask));
-	//sigaction(SIGUSR1, &act, NULL);
+	sigset_t blockSet;
+	sigfillset(&blockSet);
+	sigprocmask(SIG_SETMASK, &blockSet, NULL);
+
 	signal(SIGUSR1, SigUserHandler);
+	signal(SIGINT, SigIntHandler);
 
 	pid = getpid();
 	unsigned int nameLen = strlen(myID);
@@ -60,15 +66,20 @@ int ConnectToServer() {
 		return -1;
 	}
 
-	sigset_t blockSet;
-	sigfillset(&blockSet);
-	sigprocmask(SIG_SETMASK, &blockSet, NULL);
-
 	MsgEntry enterMsg;
 	enterMsg.msgType = pid;
+	memcpy(enterMsg.msg, &pid, sizeof(pid_t));
+	if (msgsnd(enterQueue, &enterMsg, sizeof(pid_t), 0) < 0) {
+		perror("Failed to send a message");
+		return -1;
+	}
 	memcpy(enterMsg.msg, &nameLen, sizeof(nameLen));
-	memcpy(enterMsg.msg+sizeof(nameLen), myID, nameLen);
-	if (msgsnd(enterQueue, &enterMsg, BUF_SIZE, 0) < 0) {
+	if (msgsnd(enterQueue, &enterMsg, sizeof(nameLen), 0) < 0) {
+		perror("Failed to send a message");
+		return -1;
+	}
+	memcpy(enterMsg.msg, myID, nameLen);
+	if (msgsnd(enterQueue, &enterMsg, nameLen, 0) < 0) {
 		perror("Failed to send a message");
 		return -1;
 	}
@@ -76,9 +87,10 @@ int ConnectToServer() {
 	sigprocmask(SIG_UNBLOCK, &blockSet, NULL);
 
 	printf("Waiting Signal\n");
-	do {
+	while(isConnected == 0) {
 		pause();
-	} while(!isConnected);
+		printf("Some Signal Received\n");
+	}
 	printf("Signal Received\n");
 
 	if ((channelSnd = msgget(IPC_KEY_SND, 0666|IPC_CREAT)) < 0) {
@@ -112,10 +124,6 @@ int ConnectToServer() {
 		return -1;
 	}
 	umask(oldMask);
-
-	sigset_t blockSet;
-	sigfillset(&blockSet);
-	sigprocmask(SIG_SETMASK, &blockSet, NULL);
 
 	char id_buf[sizeof(pid)+sizeof(nameLen)+10];
 	memcpy(id_buf, &pid, sizeof(pid));
