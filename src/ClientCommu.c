@@ -102,6 +102,7 @@ int ConnectToServer() {
 		return -1;
 	}
 
+	int oldMask = umask(0);
 	if (mkfifo(inPipeName, 0666) < 0) {
 		perror("Failed to make In FIFO");
 		return -1;
@@ -110,6 +111,7 @@ int ConnectToServer() {
 		perror("Failed to make In FIFO");
 		return -1;
 	}
+	umask(oldMask);
 
 	sigset_t blockSet;
 	sigfillset(&blockSet);
