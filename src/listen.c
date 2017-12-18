@@ -147,34 +147,4 @@ void init_client(CLIENT* p_client_data, pid_t pid, int len, char* id_buf, int x,
 	p_client_data->use = 0;
 
     update_AABB(p_client_data);
-
-    // fifo 생성 및 열기
-    // fifo 이름: clientID_sc(server->client) clientID_cs(client->server)
-    char read_fifo[15];
-    char* r = "_cs";
-    memcpy(read_fifo, id_buf, len);
-    memcpy(read_fifo + len, r, 3);
-    read_fifo[len + 3] = 0;
-    memcpy(p_client_data->read_fifo, read_fifo, len + 3 + 1);
-    if((p_client_data->read_fd = open(read_fifo, O_RDONLY)) < 0){
-        printf("open read fifo error"); exit(1);
-    }
-    
-    char write_fifo[15];
-    char* w = "_sc";
-    memcpy(write_fifo, id_buf, len);
-    memcpy(write_fifo + len, w, 3);
-    write_fifo[len + 3] = 0;
-    memcpy(p_client_data->write_fifo, write_fifo, len + 3 + 1);
-    if((p_client_data->write_fd = open(write_fifo, O_WRONLY)) < 0){
-        printf("open write fifo error"); exit(1);
-    }
-    
-
-    int flag;
-
-    flag = fcntl(p_client_data->read_fd, F_GETFL, 0);
-    flag = fcntl(p_client_data->read_fd, F_SETFL, flag | O_NONBLOCK);
-    //flag = fcntl(p_client_data->write_fd, F_GETFL, 0);
-    //flag = fcntl(p_client_data->write_fd, F_SETFL, flag | O_NONBLOCK);
 }

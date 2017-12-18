@@ -100,7 +100,7 @@ int RenderScreen(WINDOW* win, void* data) {
 
 	// Draw Status Bar
 	if (myIndex >= 0)
-		DrawStatusBar(win, camPos, scores->ptr[myIndex]);
+		DrawStatusBar(win, camPos, ((int*)scores->ptr)[myIndex*2+1]);
 
 	// Draw Name
 	pthread_mutex_lock(&inputLock);
@@ -212,7 +212,7 @@ void DrawRankingBar(WINDOW* win, const int* idxList, const size_t* idList, int p
 		int len = *pId++;
 		const char* data = (const char*)pId;
 
-		wprintw(win, "%d. ", i);
+		wprintw(win, "%d. ", i+1);
 		int j;
 		for (j=0; j<len; ++j) {
 			waddch(win, data[j]);

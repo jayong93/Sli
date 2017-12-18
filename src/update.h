@@ -4,7 +4,7 @@
 #include <semaphore.h>
 
 
-void read_clients_input(CLIENT_NODE**, int*, POINT_NODE**, int*, sem_t*);
+void read_clients_input(int, CLIENT_NODE**, int*, POINT_NODE**, int*, sem_t*);
 void process_client_input(CLIENT*, char);
 void process_out_client(CLIENT_NODE*, CLIENT_NODE**, int*, POINT_NODE**, int*, sem_t*);
 
@@ -28,10 +28,9 @@ int is_point_same(int, int, int, int);
 void eat_star(CLIENT*);
 void last_move_process(CLIENT_NODE*, int);
 
-void send_data_to_clients( VECTOR*,  CLIENT_NODE*, int,  POINT_NODE*, int);
+void send_data_to_clients(int, VECTOR*,  CLIENT_NODE*, int,  POINT_NODE*, int);
 unsigned int get_send_data_size(CLIENT_NODE*, int, int );
 void check_vector(VECTOR* ,unsigned int );
 void fill_send_data(VECTOR*, CLIENT_NODE*, int, POINT_NODE* , int);
-void send_data_to_client(unsigned int, VECTOR* ,int);
 
 #endif

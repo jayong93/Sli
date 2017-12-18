@@ -9,35 +9,42 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <time.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
 
-void read_clients_input(CLIENT_NODE** pp_head_client, int* p_nclients, POINT_NODE** pp_head_star, int* p_nstars, sem_t* p_sem){
+void read_clients_input(int recv_qid, CLIENT_NODE** pp_head_client, int* p_nclients, POINT_NODE** pp_head_star, int* p_nstars, sem_t* p_sem){
     // 클라이언트들로 부터 받은 입력 읽기 + 나간 클라이언트 처리
+    MSG recv_msg;
+
     CLIENT_NODE* p_cur_client = *pp_head_client;
     int nread;
     char buf;
     while(1){
         // 비동기 IO
-        nread = read(p_cur_client->client_data.read_fd, &buf, sizeof(char));
-        if(nread < 0){
-            if(errno != EAGAIN){
-                printf("message read failed"); exit(1);
+        nread = msgrcv(recv_qid, &recv_msg, sizeof(char), p_cur_client->client_data.pid, IPC_NOWAIT);
+        if(nread > 0){
+            // 수신한 메시지 처리 -> 나간 것도 msg로
+            memcpy(&buf, recv_msg.mdata, sizeof(char));
+            
+            if(buf == 'q'){ // 클라이언트가 나감
+                int out = 0;
+                CLIENT_NODE* p_del_client = p_cur_client;
+                p_cur_client = p_cur_client->next_client;
+                if(p_cur_client == *pp_head_client) out = 1;
+
+                process_out_client(p_del_client, pp_head_client, p_nclients, pp_head_star, p_nstars, p_sem);
+            
+                if(out == 1) break;
+                continue;
+            }
+            else{
+                process_client_input(&(p_cur_client->client_data), buf);
             }
         }
-        else if(nread == 0){
-            // 클라이언트가 나감
-            printf("client out\n"); 
-			int out = 0;
-            CLIENT_NODE* p_del_client = p_cur_client;
-            p_cur_client = p_cur_client->next_client;
-            if(p_cur_client == *pp_head_client) out = 1;
-
-            process_out_client(p_del_client, pp_head_client, p_nclients, pp_head_star, p_nstars, p_sem);
-            
-            if(out == 1) break;
-            continue;
-        }
         else{
-            process_client_input(&(p_cur_client->client_data), buf);
+            if(errno != ENOMSG){
+                perror("client msg rcv failed"); exit(-1);
+            }
         }
 
         p_cur_client = p_cur_client->next_client;
@@ -82,20 +89,6 @@ void process_out_client(CLIENT_NODE* p_del_client, CLIENT_NODE** pp_head_client,
 
     // client는 죽을 때 *을 남긴다
     create_points2star(*(p_del_client->client_data.pp_head_point), pp_head_star, p_nstars);
-
-    // 연결 끊는다 fd, read_fd + fifo 삭제
-    if(close(p_del_client->client_data.read_fd) == -1){
-        printf("close error \n"); exit(1);
-    }
-    if(close(p_del_client->client_data.write_fd) == -1){
-        printf("close error \n"); exit(1);
-    }
-    if(unlink(p_del_client->client_data.read_fifo) == -1){
-        printf("unlink error \n"); exit(1);
-    }
-    if(unlink(p_del_client->client_data.write_fifo) == -1){
-        printf("unlink error \n"); exit(1);
-    }
 
     // 가진 자원 전부 해제
     while(*(p_del_client->client_data.pp_head_point) != NULL){
@@ -472,31 +465,69 @@ void reset_client_data(CLIENT* p_client_data, CLIENT_NODE* p_head_client, int n_
 }
 
 
-void send_data_to_clients(VECTOR* p_send_data, CLIENT_NODE* p_head_client, int n_clients
+void send_data_to_clients(int send_qid, VECTOR* p_send_data, CLIENT_NODE* p_head_client, int n_clients
                             , POINT_NODE* p_head_star, int n_stars)
 {
+    MSG send_msg;
+    int ret;
+
     unsigned int data_size = 0;
     data_size = get_send_data_size(p_head_client, n_clients, n_stars);
     check_vector(p_send_data, data_size);
     fill_send_data(p_send_data, p_head_client, n_clients, p_head_star, n_stars);
 
     CLIENT_NODE* p_cur_client = p_head_client;
+    // data size 보내기
+    // msg 생성
+    memcpy(send_msg.mdata, &data_size, sizeof(unsigned int));
     int i = 0;
     for(i; i < n_clients; ++i){
-        send_data_to_client(data_size, p_send_data, p_cur_client->client_data.write_fd);
-
+        send_msg.mtype = p_cur_client->client_data.pid;
+        ret = msgsnd(send_qid, &send_msg, sizeof(unsigned int), 0);
+        if(ret == -1){
+            printf("msg send error \n");
+        }
         p_cur_client = p_cur_client->next_client;
     }
+
+    // data 보내기
+    int is_remain = 0;
+    unsigned int n_loop;
+    unsigned int quotient = data_size / ((unsigned int)BUF_SIZE);
+    unsigned int remainder = data_size % ((unsigned int)BUF_SIZE);
+    n_loop = quotient;
+    if(remainder > 0){
+        n_loop += 1;
+        is_remain = 1;
+    } 
+    int j = 0;
+    unsigned int msg_size;
+    for(j; j < n_loop; ++j){
+        // msg 생성
+        if(j + 1 == n_loop && is_remain == 1){
+            msg_size = remainder;
+            memcpy(send_msg.mdata, (p_send_data->p_data) + (j * BUF_SIZE), remainder);
+        }
+        else{
+            msg_size = (unsigned int)BUF_SIZE;
+            memcpy(send_msg.mdata, (p_send_data->p_data) + (j * BUF_SIZE), BUF_SIZE);
+        }
+
+        p_cur_client = p_head_client;
+        for(i = 0; i < n_clients; ++i){
+            send_msg.mtype = p_cur_client->client_data.pid;
+            ret = msgsnd(send_qid, &send_msg, msg_size, 0);
+            if(ret == -1){
+                printf("msg send error \n");
+            }
+
+            p_cur_client = p_cur_client->next_client;
+        }
+
+    }
+
 }
 
-void send_data_to_client(unsigned int data_size, VECTOR* p_send_data, int write_fd){
-    if(write(write_fd, &data_size, sizeof(unsigned int)) == -1){
-        perror("message write failed"); //exit(1);
-    }
-    if(write(write_fd, p_send_data->p_data, data_size) == -1){
-        perror("message write failed"); //exit(1);
-    }
-}
 
 
 unsigned int get_send_data_size(CLIENT_NODE* p_head_client, int n_clients, int n_stars){

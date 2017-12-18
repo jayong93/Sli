@@ -2,6 +2,8 @@
 #define DATA_STRUCT_H
 #include <pthread.h>
 #include <time.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
 
 typedef struct POINT_{
     int x;
@@ -46,10 +48,6 @@ typedef struct CLIENT_{
     int collision;
     clock_t death_time;
     
-    int write_fd;
-    int read_fd;
-    char write_fifo[15];
-    char read_fifo[15];
 }CLIENT;
 
 typedef struct CLIENT_NODE_{
@@ -65,6 +63,17 @@ typedef struct VECTOR_{
     unsigned int data_size;
     unsigned int capacity;
 }VECTOR;
+
+#define BUF_SIZE 256
+
+typedef struct MSG_{
+    long mtype;
+    char mdata[BUF_SIZE];
+}MSG;
+
+#define LISTEN_QKEY (key_t)60170
+#define CS_QKEY     (key_t)60174
+#define SC_QKEY     (key_t)60179
 
 #define MAP_WIDTH 1110
 #define MAP_HEIGHT 330

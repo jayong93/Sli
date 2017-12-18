@@ -8,6 +8,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <time.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
+#include <string.h>
 #include "update.h"
 
 
@@ -22,21 +25,42 @@ POINT_NODE** pp_head_star;
 int n_stars;
 
 sem_t client;
+
+int listen_qid;
+int recv_qid;
+int send_qid;
 ///////////////////////////////////////
 
 
 void listen(void*);
 void update(void*);
 
-void sig_handler(int signo){}
-
+void sig_handler(int signo){
+	msgctl(listen_qid, IPC_RMID, NULL);
+	msgctl(recv_qid, IPC_RMID, NULL);
+	msgctl(send_qid, IPC_RMID, NULL);
+	exit(-1);
+}
 
 int main(){
     
+	signal(SIGINT, sig_handler);
     srand(time(NULL));
-    signal(SIGPIPE, sig_handler);
 
     // 자원 초기화
+    listen_qid = msgget((key_t)LISTEN_QKEY, 0666|IPC_CREAT);
+    if(listen_qid == -1){
+        printf("create msg queue error\n"); exit(1);
+    }
+    recv_qid = msgget((key_t)CS_QKEY, 0666|IPC_CREAT);
+    if(recv_qid == -1){
+        printf("create msg queue error\n"); exit(1);
+    }
+    send_qid = msgget((key_t)SC_QKEY, 0666|IPC_CREAT);
+    if(send_qid == -1){
+        printf("create msg queue error\n"); exit(1);
+    }
+    
     pp_head_client = (CLIENT_NODE**)malloc(sizeof(CLIENT_NODE*));
     *pp_head_client = NULL;
     n_clients = 0;
@@ -79,10 +103,10 @@ void update(void* p){
         // recv inputs
         clock_t cur_time = clock();
         double diff = (double)(cur_time - last_frame_time)/CLOCKS_PER_SEC;
-        if(diff < 0.2){
+        if(diff < 0.1){
             pthread_mutex_lock(&client_data);
             //printf("read clients data \n");
-            read_clients_input(pp_head_client, &n_clients, pp_head_star, &n_stars, &client);
+            read_clients_input(recv_qid, pp_head_client, &n_clients, pp_head_star, &n_stars, &client);
             pthread_mutex_unlock(&client_data);
             continue;
         }
@@ -92,7 +116,7 @@ void update(void* p){
         pthread_mutex_lock(&client_data);
         
 		update_world(*pp_head_client, n_clients, pp_head_star, &n_stars, &last_star_time);
-        send_data_to_clients(&send_data, *pp_head_client, n_clients, *pp_head_star, n_stars);
+        send_data_to_clients(send_qid, &send_data, *pp_head_client, n_clients, *pp_head_star, n_stars);
 
         pthread_mutex_unlock(&client_data);
     }
@@ -100,20 +124,7 @@ void update(void* p){
 
 
 void listen(void* p){
-    char* fifo = "listen_fifo";
-    int fd;
-
-    // make fifo
-    if(mkfifo(fifo, 0666) == -1){
-        if(errno != EEXIST){
-            printf("fifo erro"); exit(1);
-        }
-    }
-
-    // open fifo
-    if((fd = open(fifo, O_RDONLY)) < 0){
-        printf("fifo erro"); exit(1);
-    }
+    MSG listen_msg;
 
     // 메시지 받기
     while(1){
@@ -122,21 +133,30 @@ void listen(void* p){
         char id_buf[11];
         int ret;
         
-        if((ret = read(fd, &pid, sizeof(pid_t))) == 0){
-            close(fd);
-            if((fd = open(fifo, O_RDONLY)) < 0){ printf("fifo erro"); exit(1); }
-            continue;
+        if((ret = msgrcv(listen_qid, &listen_msg, sizeof(pid_t), 0, 0)) == -1){
+            perror("msg rcv failed"); exit(-1);
         }
-        else if(ret < 0){ printf("fifo read pid error"); exit(1); }
-
-        if(read(fd, &len, sizeof(unsigned int)) < 0){
-            printf("fifo read id_len error"); exit(1);
+        else{
+			printf("pid in \n");
+            memcpy(&pid, listen_msg.mdata, sizeof(pid_t));
         }
 
-        if(read(fd, id_buf, len) < 0){
-            printf("fifo read id error"); exit(1);
+        if((ret = msgrcv(listen_qid, &listen_msg, sizeof(unsigned int), pid, 0)) == -1){
+            perror("msg rcv failed"); exit(-1);
         }
+        else{
+            memcpy(&len, listen_msg.mdata, sizeof(unsigned int));
+        }
+
+        if((ret = msgrcv(listen_qid, &listen_msg, len, pid, 0)) == -1){
+			perror("msg rcv failed"); exit(-1);
+        }
+        else{
+            memcpy(id_buf, listen_msg.mdata, len);
+        }
+
         id_buf[len] = 0;
+
 
         // 검증 (이미 존재하는 id인지, 자리가 있는지) +  등록
         int id_exist = 0;
@@ -151,6 +171,7 @@ void listen(void* p){
 
         // signal 보내주기
         if(id_exist == 0){  //ok
+			printf("%d send signal\n", pid);
             kill(pid, SIGUSR1);
             sem_post(&client);
         }
