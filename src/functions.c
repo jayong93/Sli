@@ -63,9 +63,13 @@ void create_points2star(POINT_NODE* p_head_point, POINT_NODE** pp_head_star, int
         if(x_dir != 0) x_dir = x_dir/abs(x_dir);
         if(y_dir != 0) y_dir = y_dir/abs(y_dir);
         int x = p_cur_point->point.x;
+		if(x%10 == 5) x += 5;
         int y = p_cur_point->point.y;
+		if(y%10 == 5) y += 5;
         int nx = p_next_point->point.x;
+		if(nx%10 == 5) nx += 5;
         int ny = p_next_point->point.y;
+		if(ny%10 == 5) ny += 5;
         while(1){
             POINT_NODE* p_new_star = (POINT_NODE*)malloc(sizeof(POINT_NODE));
             p_new_star->point.x = x;
@@ -74,13 +78,17 @@ void create_points2star(POINT_NODE* p_head_point, POINT_NODE** pp_head_star, int
             (*p_nstars) += 1;
             x += x_dir * 10;
             y += y_dir * 10;
-            if(x == nx && y == ny) break;
+            if(x >= nx && y >= ny) break;
         }
         p_cur_point = p_cur_point->next_point;
     }
     POINT_NODE* p_new_star = (POINT_NODE*)malloc(sizeof(POINT_NODE));
-    p_new_star->point.x = p_cur_point->point.x;
-    p_new_star->point.y = p_cur_point->point.y;
+    int x = p_cur_point->point.x;
+	if(x%10 == 5) x += 5;
+    int y = p_cur_point->point.y;
+	if(y%10 == 5) y += 5;
+    p_new_star->point.x = x;
+    p_new_star->point.y = y;
     add_head_point(pp_head_star, p_new_star);
     (*p_nstars) += 1;
 }

@@ -37,7 +37,6 @@ void read_clients_input(CLIENT_NODE** pp_head_client, int* p_nclients, POINT_NOD
             continue;
         }
         else{
-			printf("client input : %c \n", buf);
             process_client_input(&(p_cur_client->client_data), buf);
         }
 
@@ -104,6 +103,7 @@ void process_out_client(CLIENT_NODE* p_del_client, CLIENT_NODE** pp_head_client,
     }
     free(p_del_client->client_data.pp_head_point);
     free(p_del_client);
+	printf("sem wait\n");
     sem_wait(p_sem);
 }
 
@@ -111,8 +111,8 @@ void process_out_client(CLIENT_NODE* p_del_client, CLIENT_NODE** pp_head_client,
 void update_world(CLIENT_NODE* p_head_client, int n_clients, 
                     POINT_NODE** pp_head_star, int* p_nstars, clock_t* p_last_star_time)
 {
-    create_star(pp_head_star, p_nstars, p_last_star_time);
-    process_dead_clients(p_head_client, n_clients);
+	create_star(pp_head_star, p_nstars, p_last_star_time);
+	process_dead_clients(p_head_client, n_clients);
 
     int i = 0;
     for(i; i < 2; ++i){
@@ -128,22 +128,24 @@ void last_move_process(CLIENT_NODE* p_head_client, int n_clients){
     CLIENT_NODE* p_cur_client = p_head_client;
     int i = 0;
     for(i; i < n_clients; ++i){
-        if(p_cur_client->client_data.input.boost == 'o'){
-            p_cur_client->client_data.score -= 1;
-            if(p_cur_client->client_data.remain_tail <= 0) move_tail(10, &(p_cur_client->client_data));
-        }
-        if(p_cur_client->client_data.use == 1){
-			p_cur_client->client_data.use = 0;
-			p_cur_client->client_data.remain_tail -= 1;
-        }
+        if(p_cur_client->client_data.alive == 1){
+			if(p_cur_client->client_data.input.boost == 'o'){
+				p_cur_client->client_data.score -= 1;
+				if(p_cur_client->client_data.remain_tail <= 0) move_tail(10, &(p_cur_client->client_data));
+			}
+			if(p_cur_client->client_data.use == 1){
+				p_cur_client->client_data.use = 0;
+				p_cur_client->client_data.remain_tail -= 1;
+			}
+		}	
         p_cur_client = p_cur_client->next_client;
     }
 }
 
 void collision_check(CLIENT_NODE* p_head_client, int n_clients, POINT_NODE** pp_head_star, int* p_nstars){
-    if(n_clients > 1) collision_check_c2c(p_head_client, n_clients, pp_head_star, p_nstars);
+	if(n_clients > 1) collision_check_c2c(p_head_client, n_clients, pp_head_star, p_nstars);
     if(*p_nstars > 0) collision_check_c2star(p_head_client, n_clients, pp_head_star, p_nstars);
-    collision_check_c2map(p_head_client, n_clients, pp_head_star, p_nstars);
+    //collision_check_c2map(p_head_client, n_clients, pp_head_star, p_nstars);
 }
 
 void collision_check_c2map(CLIENT_NODE* p_head_client, int n_clients, POINT_NODE** pp_head_star, int* p_nstars){
