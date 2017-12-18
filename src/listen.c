@@ -144,6 +144,7 @@ void init_client(CLIENT* p_client_data, pid_t pid, int len, char* id_buf, int x,
     p_client_data->remain_tail = 0;
     p_client_data->death_time = clock();
     p_client_data->collision = 0;
+	p_client_data->use = 0;
 
     update_AABB(p_client_data);
 

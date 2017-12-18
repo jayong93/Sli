@@ -79,7 +79,7 @@ void update(void* p){
         // recv inputs
         clock_t cur_time = clock();
         double diff = (double)(cur_time - last_frame_time)/CLOCKS_PER_SEC;
-        if(diff < 0.5){
+        if(diff < 0.2){
             pthread_mutex_lock(&client_data);
             //printf("read clients data \n");
             read_clients_input(pp_head_client, &n_clients, pp_head_star, &n_stars, &client);
@@ -88,9 +88,10 @@ void update(void* p){
         }
 
         // update
+		last_frame_time = clock();
         pthread_mutex_lock(&client_data);
-
-        update_world(*pp_head_client, n_clients, pp_head_star, &n_stars, &last_star_time);
+        
+		update_world(*pp_head_client, n_clients, pp_head_star, &n_stars, &last_star_time);
         send_data_to_clients(&send_data, *pp_head_client, n_clients, *pp_head_star, n_stars);
 
         pthread_mutex_unlock(&client_data);
@@ -146,7 +147,6 @@ void listen(void* p){
         if(id_exist == 0){
             id_exist = register_client(pp_head_client, &n_clients, pid, len, id_buf);
         }
-        if(id_exist == 0) n_clients += 1;
         pthread_mutex_unlock(&client_data);
 
         // signal 보내주기

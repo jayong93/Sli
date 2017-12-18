@@ -40,6 +40,7 @@ typedef struct CLIENT_{
     AABB collision_box;
     int score;
     int remain_tail;
+	int use;
 
     int alive;
     int collision;

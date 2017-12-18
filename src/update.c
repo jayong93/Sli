@@ -25,7 +25,8 @@ void read_clients_input(CLIENT_NODE** pp_head_client, int* p_nclients, POINT_NOD
         }
         else if(nread == 0){
             // 클라이언트가 나감
-            int out = 0;
+            printf("client out\n"); 
+			int out = 0;
             CLIENT_NODE* p_del_client = p_cur_client;
             p_cur_client = p_cur_client->next_client;
             if(p_cur_client == *pp_head_client) out = 1;
@@ -36,6 +37,7 @@ void read_clients_input(CLIENT_NODE** pp_head_client, int* p_nclients, POINT_NOD
             continue;
         }
         else{
+			printf("client input : %c \n", buf);
             process_client_input(&(p_cur_client->client_data), buf);
         }
 
@@ -130,8 +132,10 @@ void last_move_process(CLIENT_NODE* p_head_client, int n_clients){
             p_cur_client->client_data.score -= 1;
             if(p_cur_client->client_data.remain_tail <= 0) move_tail(10, &(p_cur_client->client_data));
         }
-        if(p_cur_client->client_data.remain_tail > 0) p_cur_client->client_data.remain_tail -= 1;
-        
+        if(p_cur_client->client_data.use == 1){
+			p_cur_client->client_data.use = 0;
+			p_cur_client->client_data.remain_tail -= 1;
+        }
         p_cur_client = p_cur_client->next_client;
     }
 }
@@ -291,6 +295,7 @@ void move(CLIENT* p_client_data){
     int tail_speed = 5;
 
     if(p_client_data->remain_tail > 0){
+		p_client_data->use = 1;
         tail_speed = 0;
     }
     
@@ -459,6 +464,7 @@ void reset_client_data(CLIENT* p_client_data, CLIENT_NODE* p_head_client, int n_
     p_client_data->remain_tail = 0;
     p_client_data->death_time = clock();
     p_client_data->collision = 0;
+	p_client_data->use = 0;
 
     update_AABB(p_client_data);
 }
@@ -483,10 +489,10 @@ void send_data_to_clients(VECTOR* p_send_data, CLIENT_NODE* p_head_client, int n
 
 void send_data_to_client(unsigned int data_size, VECTOR* p_send_data, int write_fd){
     if(write(write_fd, &data_size, sizeof(unsigned int)) == -1){
-        perror("message write failed"); exit(1);
+        perror("message write failed"); //exit(1);
     }
     if(write(write_fd, p_send_data->p_data, data_size) == -1){
-        perror("message write failed"); exit(1);
+        perror("message write failed"); //exit(1);
     }
 }
 
