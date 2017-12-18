@@ -165,20 +165,23 @@ int ConnectToServer() {
 void RecvFromPipe(VBuffer* buf, size_t nRead) {
 	if (nRead == 0) return;
 
-	int ret;
+	int ret, received=0;
 	VBClear(buf);
 	VBAppend(buf, NULL, nRead);
 	// 파이프가 닫혔을 때 종료
-	if ((ret = read(channelRcv, buf->ptr, nRead)) < 0) {
-		endwin();
-		perror("Fail to read from pipe");
-		exit(5);
-	}
-	else if (ret == 0) {
-		endwin();
-		fprintf(stderr, "pipe is closed\n");
-		exit(6);
-	}
+	do {
+		if ((ret = read(channelRcv, buf->ptr, nRead-received)) < 0) {
+			endwin();
+			perror("Fail to read from pipe");
+			exit(5);
+		}
+		else if (ret == 0) {
+			endwin();
+			fprintf(stderr, "pipe is closed\n");
+			exit(6);
+		}
+		received += ret;
+	} while(received < nRead);
 	
 	buf->len = ret;
 }
