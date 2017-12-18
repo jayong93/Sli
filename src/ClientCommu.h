@@ -1,6 +1,6 @@
 #ifndef CLIENTCOMMU_H
 #define CLIENTCOMMU_H
-#define BUF_SIZE 100
+#define BUF_SIZE 256
 
 typedef struct MsgEntry_ {
 	long msgType;

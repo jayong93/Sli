@@ -36,6 +36,14 @@ void SigUserHandler(int signo) {
 	isConnected = 1;
 }
 
+void QuitWithMsg(int code) {
+	MsgEntry msg;
+	msg.msgType = getpid();
+	msg.msg[0] = 'q';
+	msgsnd(channelSnd, &msg, sizeof(char), 0);
+	exit(code);
+}
+
 int ConnectToServer() {
 	//struct sigaction act;
 	//act.sa_handler = SigUserHandler;
@@ -73,13 +81,13 @@ int ConnectToServer() {
 	} while(!isConnected);
 	printf("Signal Received\n");
 
-	if ((channelRcv = msgget(IPC_KEY_RCV, 0666|IPC_CREAT)) < 0) {
-		perror("Failed to get the recv queue");
+	if ((channelSnd = msgget(IPC_KEY_SND, 0666|IPC_CREAT)) < 0) {
+		perror("Failed to get the send queue");
 		return -1;
 	}
 
-	if ((channelSnd = msgget(IPC_KEY_SND, 0666|IPC_CREAT)) < 0) {
-		perror("Failed to get the send queue");
+	if ((channelRcv = msgget(IPC_KEY_RCV, 0666|IPC_CREAT)) < 0) {
+		perror("Failed to get the recv queue");
 		return -1;
 	}
 
@@ -198,7 +206,7 @@ void RecvFromMsgQueue(VBuffer* buf, size_t nRead) {
 		if ((ret = msgrcv(channelRcv, &msg, BUF_SIZE, pid, 0)) < 0) {
 			endwin();
 			perror("Fail to read from MsgQueue");
-			exit(5);
+			QuitWithMsg(5);
 		}
 		received += ret;
 		VBAppend(buf, msg.msg, ret);
@@ -220,7 +228,7 @@ void* RecvMsg() {
 	while(1) {
 		RecvFromServer(&msgBuf, sizeof(int));
 #ifndef USE_FIFO
-		if (*(unsigned int*)(msgBuf.ptr) < 0) {endwin(); fprintf(stderr, "bad data\n"); exit(5);}
+		if (*(unsigned int*)(msgBuf.ptr) < 0) {endwin(); fprintf(stderr, "bad data\n"); QuitWithMsg(5);}
 #endif
 		size_t dataLen = (size_t)(*(unsigned int*)(msgBuf.ptr));
 		pthread_mutex_lock(&rDataLock);
@@ -245,7 +253,7 @@ void* SendMsg() {
 		if (mainWin) {
 			int input = use_window(mainWin, GetInput, NULL);
 			if(input == ERR) continue;
-			char ch;
+			char ch = 0;
 			switch (input) {
 				case KEY_LEFT:
 					ch = 'l';
@@ -269,20 +277,23 @@ void* SendMsg() {
 					pthread_mutex_unlock(&inputLock);
 					break;
 			}
+			
+			if (ch) {
 #ifndef USE_FIFO
-			MsgEntry msg;
-			msg.msgType = pid;
-			memcpy(msg.msg, &ch, sizeof(ch));
-			if(msgsnd(channelSnd, &msg, sizeof(ch), 0) < 0) {
-				perror("Failed to send message");
-				exit(3);
-			}
+				MsgEntry msg;
+				msg.msgType = pid;
+				memcpy(msg.msg, &ch, sizeof(ch));
+				if(msgsnd(channelSnd, &msg, sizeof(ch), 0) < 0) {
+					perror("Failed to send message");
+					exit(3);
+				}
 #else
-			if(write(channelSnd, &ch, sizeof(ch)) < 0) {
-				perror("Failed to send message");
-				exit(3);
-			}
+				if(write(channelSnd, &ch, sizeof(ch)) < 0) {
+					perror("Failed to send message");
+					exit(3);
+				}
 #endif
+			}
 		}
 	}
 }
