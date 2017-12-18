@@ -151,7 +151,9 @@ int RenderScreen(WINDOW* win, void* data) {
 		wattroff(win, COLOR_PAIR(color));
 		// Draw head
 		wattron(win, COLOR_PAIR(1));
-		mvwaddch(win, head.y, head.x, BODY);
+		if ((head.x >= 1 && head.x <= WINDOW_WIDTH-2) &&
+			(head.y >= 1 && head.y <= WINDOW_HEIGHT-2)) 
+			mvwaddch(win, head.y, head.x, BODY);
 		wattroff(win, COLOR_PAIR(1));
 	}
 
@@ -177,6 +179,9 @@ void TransformToScreen(Point base, Point* target) {
 }
 
 void DrawLine(WINDOW* win, Point start, Point end) {
+	if ((start.x < 1 || start.x > WINDOW_WIDTH-2) &&
+		(start.y < 1 || start.y > WINDOW_HEIGHT-2)) return;
+
 	int xoffset = (end.x > start.x)?1:((end.x < start.x)?-1:0);
 	int yoffset = (end.y > start.y)?1:((end.y < start.y)?-1:0);
 
@@ -184,8 +189,8 @@ void DrawLine(WINDOW* win, Point start, Point end) {
 	int cx = start.x + xoffset, cy = start.y + yoffset;
 
 	for (; cx-xoffset != end.x || cy-yoffset != end.y; cx += xoffset, cy += yoffset) {
-		if (cx < 1 || cx > WINDOW_WIDTH-2) break;
-		if (cy < 1 || cy > WINDOW_HEIGHT-2) break;
+		if (cx < 1 || cx > WINDOW_WIDTH-2) continue;
+		if (cy < 1 || cy > WINDOW_HEIGHT-2) continue;
 		mvwaddch(win, cy, cx, BODY);
 	}
 }
