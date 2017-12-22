@@ -24,6 +24,7 @@ extern int isUpdated;
 extern int isNameEnabled;
 extern const char* myID;
 
+// 점수 내림차순 비교
 int ScoreCmp(const void* a, const void* b) {
 	int aScore = ((int*)a)[1];
 	int bScore = ((int*)b)[1];
@@ -168,6 +169,7 @@ int RenderScreen(WINDOW* win, void* data) {
 		mvwaddch(win, star.y, star.x, STAR);
 	}
 
+	// Sort players score and index
 	qsort(scores->ptr, scores->len/(sizeof(int)*2), sizeof(int)*2, ScoreCmp);
 	DrawRankingBar(win, (const int*)scores->ptr, (const size_t*)ids->ptr, nPlayer);
 	return 0;
@@ -228,6 +230,7 @@ void* Render() {
 
 	pthread_mutex_lock(&inputLock);
 
+	// ncurses 초기화
 	initscr();
 	backWin = newwin(WINDOW_HEIGHT, WINDOW_WIDTH, 0, 0);
 	mainWin = newwin(WINDOW_HEIGHT, WINDOW_WIDTH, 0, 0);
@@ -268,10 +271,10 @@ void* Render() {
 	pthread_mutex_unlock(&inputLock);
 
 	VBuffer buf[4];
-	buf[0] = VBCreate(50);
-	buf[1] = VBCreate(80);
-	buf[2] = VBCreate(40);	// [#len|data(without null)]
-	buf[3] = VBCreate(80);
+	buf[0] = VBCreate(50);	// total data buf
+	buf[1] = VBCreate(80);	// score+index buf
+	buf[2] = VBCreate(40);	// id buf(without null)
+	buf[3] = VBCreate(80);	// players head position buf
 	void* renDatas[2] = {buf, &nColor};
 	while(1) {
 		// 렌더링 데이터 복사

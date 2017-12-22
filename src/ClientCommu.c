@@ -118,6 +118,7 @@ int ConnectToServer() {
 		return -1;
 	}
 
+	// 전용 파이프 생성
 	int oldMask = umask(0);
 	if (mkfifo(inPipeName, 0666) < 0) {
 		perror("Failed to make In FIFO");
