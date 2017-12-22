@@ -47,7 +47,6 @@ void SigUserHandler(int signo) {
 
 void SigIntHandler(int signo) {
 #ifdef USE_FIFO
-	endwin();
 	exit(1);
 #else
 	QuitWithMsg(1);
@@ -119,6 +118,7 @@ int ConnectToServer() {
 		return -1;
 	}
 
+	// 전용 파이프 생성
 	int oldMask = umask(0);
 	if (mkfifo(inPipeName, 0666) < 0) {
 		perror("Failed to make In FIFO");
