@@ -46,7 +46,11 @@ void SigUserHandler(int signo) {
 }
 
 void SigIntHandler(int signo) {
+#ifdef USE_FIFO
+	exit(1);
+#else
 	QuitWithMsg(1);
+#endif
 }
 
 int ConnectToServer() {
